@@ -50,13 +50,13 @@
 
 ### 中文版快捷安装（MySQL 8.0 / 8.4）
 
-在宝塔 / aaPanel 中准备 PHP 8.3 / 8.4、MySQL、Redis 和网站后，在本项目目录运行：
+全新安装请按 [宝塔 / aaPanel 安装教程](docs/installation-zh.md) 操作：安装环境、创建网站、下载程序，再执行初始化。仓库已包含打包好的前端文件，服务器不需要安装 Node.js。
 
 ```sh
-sh init.sh
+PHP_BIN=/www/server/php/83/bin/php sh init.sh
 ```
 
-根据中文提示完成初始化。环境要求、网站配置及恢复说明见 [中文版安装文档](docs/installation-zh.md)。
+上面的命令在网站目录中执行，使用宝塔的 PHP 8.3。安装完成后，继续按教程配置运行目录、伪静态、计划任务和队列。
 
 
 #### Installation & Documentation

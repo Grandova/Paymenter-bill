@@ -7,7 +7,7 @@ cd "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 PHP_BIN=${PHP_BIN:-php}
 
 if [ -f .env ]; then
-    printf '%s\n' '检测到已有 .env，已停止安装，避免覆盖站点配置和数据。请参阅 docs/installation-zh.md 的中断恢复说明。'
+    printf '%s\n' '检测到已有 .env，已停止安装。请保留此文件，并按 docs/installation-zh.md 的常见问题说明检查上次安装的报错。'
     exit 1
 fi
 
@@ -35,11 +35,8 @@ foreach (["putenv", "proc_open", "symlink", "pcntl_signal", "pcntl_alarm"] as $f
 '
 
 if [ ! -f public/default/manifest.json ]; then
-    if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
-        printf '%s\n' '源码包需要构建前端，请先安装 Node.js 22.12+ 和 npm，并加入终端 PATH。'
-        exit 1
-    fi
-    node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (!(major === 20 && minor >= 19 || major === 22 && minor >= 12 || major > 22)) { console.error("请使用 Node.js 22.12+ 构建前端。"); process.exit(1); }'
+    printf '%s\n' '程序文件不完整。请按 docs/installation-zh.md 重新下载本仓库的完整程序包。'
+    exit 1
 fi
 
 WEB_USER=$(id -un)
@@ -74,11 +71,6 @@ fi
 export COMPOSER_ALLOW_SUPERUSER=1
 "$PHP_BIN" "$COMPOSER_BIN" install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 "$PHP_BIN" "$COMPOSER_BIN" check-platform-reqs --no-dev
-
-if [ ! -f public/default/manifest.json ]; then
-    npm ci --include=dev --no-audit --no-fund
-    npm run build
-fi
 
 mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs storage/fonts bootstrap/cache
 "$PHP_BIN" artisan app:install

@@ -1,0 +1,35 @@
+{
+  "resources/css/filament/admin/theme.css": {
+    "file": "assets/theme-BYEVNLWT.css",
+    "name": "theme",
+    "names": [
+      "theme.css"
+    ],
+    "src": "resources/css/filament/admin/theme.css",
+    "isEntry": true
+  },
+  "themes/default/css/app.css": {
+    "file": "assets/app-pb5vNQxY.css",
+    "name": "app",
+    "names": [
+      "app.css"
+    ],
+    "src": "themes/default/css/app.css",
+    "isEntry": true
+  },
+  "themes/default/js/app.js": {
+    "file": "assets/app-DIngxH5t.js",
+    "name": "app",
+    "src": "themes/default/js/app.js",
+    "isEntry": true
+  },
+  "themes/default/js/easymde-entry.js": {
+    "file": "assets/easymde-entry-ClhZj_UZ.js",
+    "name": "easymde-entry",
+    "src": "themes/default/js/easymde-entry.js",
+    "isEntry": true,
+    "css": [
+      "assets/easymde-entry-u1uPtOLD.css"
+    ]
+  }
+}
