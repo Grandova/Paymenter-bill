@@ -1,0 +1,146 @@
+<?php
+
+return [
+    'name' => __('Default'),
+    'author' => 'Paymenter',
+    'url' => 'https://paymenter.org',
+
+    'settings' => [
+        [
+            'name' => 'direct_checkout',
+            'label' => __('Direct Checkout'),
+            'type' => 'checkbox',
+            'default' => false,
+            'database_type' => 'boolean',
+            'description' => __('Don\'t show the product overview page, go directly to the checkout page'),
+        ],
+        [
+            'name' => 'small_images',
+            'label' => __('Small Images'),
+            'type' => 'checkbox',
+            'default' => false,
+            'database_type' => 'boolean',
+            'description' => __('Show small images in the product overview page'),
+        ],
+        [
+            'name' => 'show_category_description',
+            'label' => __('Show Category Description'),
+            'type' => 'checkbox',
+            'default' => true,
+            'database_type' => 'boolean',
+            'description' => __('Show the category description in the product overview page/homepage'),
+        ],
+        [
+            'name' => 'logo_display',
+            'label' => __('Logo display'),
+            'type' => 'select',
+            'options' => [
+                'logo-only' => __('Logo only'),
+                'logo-and-name' => __('Logo and Name'),
+            ],
+            'default' => 'logo-and-name',
+        ],
+        [
+            'name' => 'home_page_text',
+            'label' => __('Home Page Text'),
+            'type' => 'markdown',
+            'default' => __('Welcome to Paymenter!'),
+        ],
+        [
+            'name' => 'primary',
+            'label' => __('Primary - Brand Color (Light)'),
+            'type' => 'color',
+            'default' => 'hsl(229, 100%, 64%)',
+        ],
+        [
+            'name' => 'secondary',
+            'label' => __('Secondary - Brand Color (Light)'),
+            'type' => 'color',
+            'default' => 'hsl(237, 33%, 60%)',
+        ],
+        [
+            'name' => 'neutral',
+            'label' => __('Borders, Accents... (Light)'),
+            'type' => 'color',
+            'default' => 'hsl(220, 25%, 85%)',
+        ],
+        [
+            'name' => 'base',
+            'label' => __('Base - Text Color (Light)'),
+            'type' => 'color',
+            'default' => 'hsl(0, 0%, 0%)',
+        ],
+        [
+            'name' => 'muted',
+            'label' => __('Muted - Text Color (Light)'),
+            'type' => 'color',
+            'default' => 'hsl(220, 0%, 53%)',
+        ],
+        [
+            'name' => 'inverted',
+            'label' => __('Inverted - Text Color (Light)'),
+            'type' => 'color',
+            'default' => 'hsl(100, 100%, 100%)',
+        ],
+        [
+            'name' => 'background',
+            'label' => __('Background - Color (Light)'),
+            'type' => 'color',
+            'default' => 'hsl(100, 100%, 100%)',
+        ],
+        [
+            'name' => 'background-secondary',
+            'label' => __('Background - Secondary Color (Light)'),
+            'type' => 'color',
+            'default' => 'hsl(0, 0%, 97%)',
+        ],
+        [
+            'name' => 'dark-primary',
+            'label' => __('Primary - Brand Color (Dark)'),
+            'type' => 'color',
+            'default' => 'hsl(229, 100%, 64%)',
+        ],
+        [
+            'name' => 'dark-secondary',
+            'label' => __('Secondary - Brand Color (Dark)'),
+            'type' => 'color',
+            'default' => 'hsl(237, 33%, 60%)',
+        ],
+        [
+            'name' => 'dark-neutral',
+            'label' => __('Borders, Accents... (Dark)'),
+            'type' => 'color',
+            'default' => 'hsl(0, 0%, 17%)',
+        ],
+        [
+            'name' => 'dark-base',
+            'label' => __('Base - Text Color (Dark)'),
+            'type' => 'color',
+            'default' => 'hsl(100, 100%, 100%)',
+        ],
+        [
+            'name' => 'dark-muted',
+            'label' => __('Muted - Text Color (Dark)'),
+            'type' => 'color',
+            'default' => 'hsl(0, 0%, 40%)',
+        ],
+        [
+            'name' => 'dark-inverted',
+            'label' => __('Inverted - Text Color (Dark)'),
+            'type' => 'color',
+            'default' => 'hsl(220, 14%, 60%)',
+        ],
+        [
+            'name' => 'dark-background',
+            'label' => __('Background - Color (Dark)'),
+            'type' => 'color',
+            'default' => 'hsl(240, 18%, 9%)',
+        ],
+        [
+            'name' => 'dark-background-secondary',
+            'label' => __('Background - Secondary Color (Dark)'),
+            'type' => 'color',
+            'default' => 'hsl(240, 13%, 11%)',
+        ],
+    ],
+];
