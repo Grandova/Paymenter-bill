@@ -67,7 +67,7 @@ rm -f paymenter.tar.gz
 PHP_BIN=/www/server/php/83/bin/php sh init.sh
 ```
 
-脚本会自动准备 Composer、安装依赖并初始化网站，根据中文提示填写：
+脚本会自动下载并校验项目专用的 Composer 2，安装依赖并初始化网站，不受面板自带旧版 Composer 的影响。根据中文提示填写：
 
 > 网站运行用户填写 `www`。
 >
@@ -144,6 +144,14 @@ location / {
 安装至此完成。打开 `https://bill.example.com`，使用刚才设置的管理员邮箱和密码登录，再访问 `https://bill.example.com/admin` 进入后台。前台和后台默认显示简体中文。
 
 ### 常见问题
+
+**安装提示 `composer-runtime-api` 版本不兼容**
+
+这是旧版 Composer 导致的。请使用本仓库最新的 `init.sh`，它会自动准备项目专用 Composer。不要执行 `composer update` 或删除 `composer.lock`。
+
+**PHP 提示 `Module "zip" / "mbstring" is already loaded`**
+
+表示扩展被重复加载。执行 `/www/server/php/83/bin/php --ini` 查看生效的配置文件，检查其中重复的扩展加载项；动态扩展只保留一次加载，已编译进 PHP 的扩展不需要再写 `extension=`。修改后重启 PHP。这类警告与 Composer 版本不兼容是两个问题。
 
 **安装时提示数据库连接失败**
 

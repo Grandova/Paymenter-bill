@@ -52,25 +52,21 @@ if [ "$(id -u)" -eq 0 ]; then
     id "$WEB_USER" >/dev/null 2>&1 || { printf '%s\n' '该系统用户不存在。'; exit 1; }
 fi
 
-printf '%s\n' '正在安装 PHP 依赖……'
-if command -v composer >/dev/null 2>&1; then
-    COMPOSER_BIN=$(command -v composer)
-else
-    command -v curl >/dev/null 2>&1 || { printf '%s\n' '请先安装 curl 或 Composer 2。'; exit 1; }
-    installer=$(mktemp)
-    trap 'rm -f "$installer"' EXIT HUP INT TERM
-    curl -fsSL https://getcomposer.org/installer -o "$installer"
-    checksum=$(curl -fsSL https://composer.github.io/installer.sig)
-    "$PHP_BIN" -r 'if (!hash_equals($argv[1], hash_file("sha384", $argv[2]))) { fwrite(STDERR, "Composer 安装器校验失败。\n"); exit(1); }' "$checksum" "$installer"
-    "$PHP_BIN" "$installer" --2 --install-dir=. --filename=composer.phar
-    rm -f "$installer"
-    trap - EXIT HUP INT TERM
-    COMPOSER_BIN=./composer.phar
-fi
+printf '%s\n' '正在准备项目专用 Composer 2……'
+command -v curl >/dev/null 2>&1 || { printf '%s\n' '请先安装 curl。'; exit 1; }
+installer=$(mktemp)
+trap 'rm -f "$installer"' EXIT HUP INT TERM
+curl -fsSL https://getcomposer.org/installer -o "$installer"
+checksum=$(curl -fsSL https://composer.github.io/installer.sig)
+"$PHP_BIN" -r 'if (!hash_equals($argv[1], hash_file("sha384", $argv[2]))) { fwrite(STDERR, "Composer 安装器校验失败。\n"); exit(1); }' "$checksum" "$installer"
+"$PHP_BIN" "$installer" --2 --install-dir=. --filename=composer.phar
+rm -f "$installer"
+trap - EXIT HUP INT TERM
 
+printf '%s\n' '正在安装 PHP 依赖……'
 export COMPOSER_ALLOW_SUPERUSER=1
-"$PHP_BIN" "$COMPOSER_BIN" install --no-dev --prefer-dist --optimize-autoloader --no-interaction
-"$PHP_BIN" "$COMPOSER_BIN" check-platform-reqs --no-dev
+"$PHP_BIN" ./composer.phar install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+"$PHP_BIN" ./composer.phar check-platform-reqs --no-dev
 
 mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs storage/fonts bootstrap/cache
 "$PHP_BIN" artisan app:install
