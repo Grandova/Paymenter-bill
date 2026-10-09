@@ -16,6 +16,7 @@ class Support extends BaseWidget
     {
         return $table
             ->heading(__('Support'))
+            ->emptyStateHeading(__('No open tickets'))
             ->query(
                 Ticket::query()
                     ->where('status', '!=', 'closed')

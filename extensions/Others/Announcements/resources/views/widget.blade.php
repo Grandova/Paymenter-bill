@@ -1,11 +1,11 @@
-@if($announcements->count() > 0) 
-<div>
+<div @class(['card p-5 sm:p-6' => $announcements->isNotEmpty()])>
+    @if($announcements->isNotEmpty())
     <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-3">
             <div class="bg-background-secondary border border-neutral p-2 rounded-lg">
                 <x-ri-megaphone-fill class="size-5" />
             </div>
-            <h2 class="text-xl font-semibold">{{ __('Announcements') }}</h2>
+            <h2 class="text-base font-semibold">{{ __('Announcements') }}</h2>
         </div>
     </div>
     <div class="space-y-4">
@@ -30,10 +30,10 @@
             @endforeach
         </div>
     </div>
-    <x-navigation.link class="bg-background-secondary hover:bg-background-secondary/80 bg-background-secondary hover:bg-background-secondary/80 border border-neutral flex items-center justify-center rounded-lg flex items-center justify-center rounded-lg"
+    <x-navigation.link class="bg-background-secondary hover:bg-background-secondary/80 border border-neutral flex items-center justify-center rounded-lg"
         :href="route('announcements.index')">
         {{ __('dashboard.view_all') }}
         <x-ri-arrow-right-fill class="size-5" />
     </x-navigation.link>
+    @endif
 </div>
-@endif

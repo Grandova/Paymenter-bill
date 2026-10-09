@@ -40,7 +40,7 @@ class TicketResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Administration');
+        return __('Customers and support');
     }
 
     public static function getNavigationBadge(): ?string

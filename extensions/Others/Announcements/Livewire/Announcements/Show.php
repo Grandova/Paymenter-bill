@@ -11,7 +11,7 @@ class Show extends Component
 
     public function mount()
     {
-        if (!$this->announcement->is_active || $this->announcement->published_at > now()) {
+        if (!Announcement::published()->whereKey($this->announcement->id)->exists()) {
             return abort(404);
         }
     }

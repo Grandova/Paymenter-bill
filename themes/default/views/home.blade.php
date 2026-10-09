@@ -1,6 +1,6 @@
 <div>
     <div class="flex flex-col gap-6">
-        <div class="w-full bg-background-secondary p-14 rounded-md border-b border-neutral">
+        <div class="w-full bg-background-secondary py-10 sm:py-14 border-b border-neutral">
             <div class="container">
                 <article class="prose dark:prose-invert max-w-full ">
                     {!! Str::markdown(theme('home_page_text', 'Welcome to Paymenter'), [
@@ -16,9 +16,9 @@
 
             <h2 class="text-xl font-semibold">{{ __('Services') }}</h2>
 
-            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mb-4">
+            <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-5 mb-4">
                 @foreach ($categories as $category)
-                <div class="flex flex-col bg-background-secondary hover:bg-background-secondary/80 border border-neutral p-4 rounded-lg">
+                <div class="card flex flex-col p-6 transition-shadow hover:shadow-md">
                     @if(theme('small_images', false))
                     <div class="flex gap-x-3 items-center">
                         @endif

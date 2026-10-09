@@ -2,6 +2,7 @@
 
 namespace Paymenter\Extensions\Others\Announcements\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class Announcement extends Model
@@ -19,5 +20,11 @@ class Announcement extends Model
 
     protected $casts = [
         'published_at' => 'datetime',
+        'is_active' => 'boolean',
     ];
+
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->where('is_active', true)->where('published_at', '<=', now());
+    }
 }

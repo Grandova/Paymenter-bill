@@ -32,9 +32,9 @@
                 </x-button.primary>
                 
                 <x-button.danger type="button" 
-                    x-text="$store.confirmation.cancelText || @js(__('Cancel'))" 
                     x-on:click="!$store.confirmation.loading && $store.confirmation.close()"
                     ::disabled="$store.confirmation.loading">
+                    <span x-text="$store.confirmation.cancelText || @js(__('Cancel'))"></span>
                 </x-button.danger>
             </div>
         </div>

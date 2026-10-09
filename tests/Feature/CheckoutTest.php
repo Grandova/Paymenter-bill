@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Cart;
+use App\Models\Server;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Once;
 use Livewire\Livewire;
@@ -40,20 +41,22 @@ class CheckoutTest extends TestCase
         $response->assertSee($this->product->product->name);
     }
 
-    public function test_checkout_page_redirects_to_cart_if_one_plan(): void
+    public function test_single_plan_requires_confirmation_before_adding_to_cart(): void
     {
         $response = $this->get(route('products.checkout', [
             $this->product->product->category->slug,
             $this->product->product->slug,
         ]));
 
-        $response->assertRedirect(route('cart'));
+        $response->assertOk();
+        $this->assertDatabaseCount('cart_items', 0);
+        Livewire::test('products.checkout', ['category' => $this->product->product->category, 'product' => $this->product->product->slug])
+            ->call('checkout')
+            ->assertRedirect(route('cart'));
         $cart = Cart::where('currency_code', 'USD')->first();
         $this->assertNotNull($cart);
 
         $this->assertNotNull($cart->items()->first());
-        $response->assertCookie('cart', $cart->ulid);
-
         Once::flush();
 
         $response = $this->withCookie('cart', $cart->ulid)->get(route('cart'));
@@ -144,7 +147,46 @@ class CheckoutTest extends TestCase
             ->assertSee($this->product->product->name)
             ->assertSee('$10.00')
             ->set('plan_id', $plan->id)
+            ->assertHasErrors(['plan_id' => 'in'])
+            ->assertSet('total.price', 10.00);
+        $this->assertDatabaseCount('cart_items', 0);
+    }
+
+    public function test_location_cards_use_each_products_own_server_and_plan(): void
+    {
+        $hongKong = $this->product->product;
+        $server = Server::create(['name' => 'Hong Kong', 'type' => 'server', 'extension' => 'Pterodactyl', 'enabled' => true]);
+        $hongKong->update(['name' => '香港云服务器', 'server_id' => $server->id]);
+        $tokyo = $this->createProduct(['category_id' => $hongKong->category_id]);
+        $server = Server::create(['name' => 'Tokyo', 'type' => 'server', 'extension' => 'Pterodactyl', 'enabled' => true]);
+        $tokyo->product->update(['name' => '东京云服务器', 'server_id' => $server->id]);
+        $tokyo->plan->prices()->update(['price' => 25.00]);
+        $hidden = $this->createProduct(['category_id' => $hongKong->category_id, 'hidden' => true]);
+        $hidden->product->update(['name' => 'Hidden location']);
+        $soldOut = $this->createProduct(['category_id' => $hongKong->category_id, 'stock' => 0]);
+        $soldOut->product->update(['name' => 'Sold out location']);
+        $otherCategory = $this->createProduct();
+        $otherCategory->product->update(['name' => 'Unrelated product']);
+
+        $this->get(route('products.checkout', ['category' => $hongKong->category, 'product' => $hongKong]))
+            ->assertOk()
+            ->assertSee('香港云服务器')
+            ->assertSee('东京云服务器')
+            ->assertSee(route('products.checkout', ['category' => $hongKong->category, 'product' => $tokyo->product]))
+            ->assertDontSee('Hidden location')
+            ->assertDontSee('Unrelated product')
+            ->assertDontSee(route('products.checkout', ['category' => $hongKong->category, 'product' => $soldOut->product]));
+        $this->assertDatabaseCount('cart_items', 0);
+
+        Once::flush();
+        Livewire::test('products.checkout', ['category' => $hongKong->category, 'product' => $tokyo->product->slug])
+            ->assertSet('plan_id', $tokyo->plan->id)
+            ->assertSet('total.price', 25.00)
             ->call('checkout')
-            ->assertHasErrors(['plan_id' => 'in']);
+            ->assertRedirect(route('cart'));
+        $item = Cart::first()->items()->sole();
+        $this->assertSame($tokyo->product->id, $item->product_id);
+        $this->assertSame($server->id, $item->product->server_id);
+        $this->assertSame($tokyo->plan->id, $item->plan_id);
     }
 }

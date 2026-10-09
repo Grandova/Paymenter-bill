@@ -37,7 +37,7 @@ class GatewayResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Extensions');
+        return __('Finance');
     }
 
     public static function getGloballySearchableAttributes(): array
@@ -78,7 +78,7 @@ class GatewayResource extends Resource
                     )
                     ->options(array_combine(
                         array_column($gateways, 'name'),
-                        array_column($gateways, 'name')
+                        array_map(fn ($gateway) => __($gateway['name']), $gateways)
                     ))
                     ->live(onBlur: true)
                     ->afterStateUpdated(fn (Select $component) => $component

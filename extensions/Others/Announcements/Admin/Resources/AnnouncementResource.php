@@ -13,7 +13,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
@@ -37,7 +36,7 @@ class AnnouncementResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Administration');
+        return __('Site content');
     }
 
     public static function form(Schema $schema): Schema
@@ -69,10 +68,12 @@ class AnnouncementResource extends Resource
                     ->placeholder(__('Short description to show on the announcement list')),
                 DateTimePicker::make('published_at')
                     ->label(__('Published At'))
+                    ->default(now())
+                    ->helperText(__('Publication time uses :timezone. Future dates are scheduled.', ['timezone' => config('app.timezone')]))
                     ->required()
                     ->placeholder(__('Enter the date and time when the announcement should be published')),
                 Toggle::make('is_active')
-                    ->label(__('Is Published'))
+                    ->label(__('Enable publication'))
                     ->default(false),
                 RichEditor::make('content')
                     ->columnSpanFull()
@@ -93,9 +94,11 @@ class AnnouncementResource extends Resource
                     ->searchable()
                     ->dateTime()
                     ->sortable(),
-                IconColumn::make('is_active')
-                    ->label(__('Published'))
-                    ->boolean()
+                TextColumn::make('is_active')
+                    ->label(__('Status'))
+                    ->formatStateUsing(fn (Announcement $record) => !$record->is_active || !$record->published_at ? __('Draft') : ($record->published_at->isFuture() ? __('Scheduled') : __('Published')))
+                    ->badge()
+                    ->color(fn (Announcement $record) => !$record->is_active || !$record->published_at ? 'gray' : ($record->published_at->isFuture() ? 'warning' : 'success'))
                     ->sortable(),
             ])
             ->filters([

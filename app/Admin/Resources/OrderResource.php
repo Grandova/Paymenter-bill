@@ -45,7 +45,7 @@ class OrderResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Administration');
+        return __('Finance');
     }
 
     public static function form(Schema $schema): Schema

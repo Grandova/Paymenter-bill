@@ -35,7 +35,6 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
@@ -60,7 +59,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->spa()
             ->colors([
-                'primary' => Color::Blue,
+                'primary' => Color::Zinc,
             ])
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->favicon(config('settings.favicon') ? Storage::url(config('settings.favicon')) : null)
@@ -90,22 +89,16 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::SIDEBAR_NAV_END,
                 fn (): string => Blade::render('<x-admin-footer />'),
             )
-            ->renderHook(
-                'panels::head.end',
-                function (): string {
-                    $activeTheme = config('settings.theme', 'default');
-                    $activeThemePath = base_path("themes/{$activeTheme}/views/layouts/colors.blade.php");
-                    $defaultThemePath = base_path('themes/default/views/layouts/colors.blade.php');
-                    $pathToUse = File::exists($activeThemePath) ? $activeThemePath : $defaultThemePath;
-
-                    return Blade::render(File::get($pathToUse));
-                }
-            )
+            ->sidebarWidth('15rem')
             ->navigationGroups([
-                __('Administration'),
+                __('Products and services'),
+                __('Customers and support'),
+                __('Finance'),
+                __('Site content'),
                 __('Configuration'),
                 __('Extensions'),
                 __('System'),
+                __('Other'),
             ])
             ->middleware([
                 EncryptCookies::class,

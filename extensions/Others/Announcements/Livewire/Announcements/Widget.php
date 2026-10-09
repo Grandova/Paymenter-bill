@@ -7,17 +7,10 @@ use Paymenter\Extensions\Others\Announcements\Models\Announcement;
 
 class Widget extends Component
 {
-    public function mount()
-    {
-        if (Announcement::where('is_active', true)->where('published_at', '<=', now())->count() == 0) {
-            return abort(404);
-        }
-    }
-
     public function render()
     {
         return view('announcements::widget', [
-            'announcements' => Announcement::latest()->get(),
+            'announcements' => Announcement::published()->orderBy('published_at', 'desc')->get(),
         ]);
     }
 }

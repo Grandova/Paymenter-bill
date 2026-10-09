@@ -35,7 +35,7 @@ class ConfigOptionResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Configuration');
+        return __('Products and services');
     }
 
     public static function form(Schema $schema): Schema

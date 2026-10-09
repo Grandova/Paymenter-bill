@@ -55,7 +55,7 @@ class ProductResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Administration');
+        return __('Products and services');
     }
 
     public static function form(Schema $schema): Schema

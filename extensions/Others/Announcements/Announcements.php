@@ -5,7 +5,6 @@ namespace Paymenter\Extensions\Others\Announcements;
 use App\Attributes\ExtensionMeta;
 use App\Classes\Extension\Extension;
 use App\Helpers\ExtensionHelper;
-use App\Livewire\Auth\Register;
 use Exception;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -73,7 +72,7 @@ class Announcements extends Extension
         Gate::policy(Announcement::class, Policies\AnnouncementPolicy::class);
 
         Event::listen('navigation', function () {
-            if (Announcement::where('is_active', true)->where('published_at', '<=', now())->count() == 0) {
+            if (Announcement::published()->count() == 0) {
                 return;
             }
 
@@ -98,7 +97,7 @@ class Announcements extends Extension
         Event::listen('pages.home', function () {
             return [
                 'view' => view('announcements::index', [
-                    'announcements' => Announcement::where('is_active', true)->where('published_at', '<=', now())->orderBy('published_at', 'desc')->get(),
+                    'announcements' => Announcement::published()->orderBy('published_at', 'desc')->get(),
                 ]),
             ];
         });
@@ -106,8 +105,7 @@ class Announcements extends Extension
         Event::listen('pages.dashboard', function () {
             return [
                 'view' => view('announcements::widget', [
-                    'announcements' => Announcement::where('is_active', true)
-                        ->where('published_at', '<=', now())
+                    'announcements' => Announcement::published()
                         ->orderBy('published_at', 'desc')
                         ->get(),
                 ]),

@@ -9,7 +9,7 @@ class Index extends Component
 {
     public function mount()
     {
-        if (Announcement::where('is_active', true)->where('published_at', '<=', now())->count() == 0) {
+        if (Announcement::published()->count() == 0) {
             return abort(404);
         }
     }
@@ -17,7 +17,7 @@ class Index extends Component
     public function render()
     {
         return view('announcements::index', [
-            'announcements' => Announcement::where('is_active', true)->where('published_at', '<=', now())->orderBy('published_at', 'desc')->get(),
+            'announcements' => Announcement::published()->orderBy('published_at', 'desc')->get(),
         ]);
     }
 }

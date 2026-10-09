@@ -16,7 +16,7 @@ class Services extends Cluster
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Administration');
+        return __('Products and services');
     }
 
     public static function getClusterBreadcrumb(): ?string

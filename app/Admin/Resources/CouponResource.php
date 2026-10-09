@@ -37,7 +37,7 @@ class CouponResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Configuration');
+        return __('Finance');
     }
 
     public static function form(Schema $schema): Schema

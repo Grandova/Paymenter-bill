@@ -1,50 +1,56 @@
-<div class="container mt-14 space-y-4">
-    <x-navigation.breadcrumb />
-    @forelse ($services as $service)
-    <a href="{{ route('services.show', $service) }}" wire:navigate>
-        <div class="bg-background-secondary hover:bg-background-secondary/80 border border-neutral p-4 rounded-lg mb-4">
-        <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center gap-3">
-            <div class="bg-secondary/10 p-2 rounded-lg">
-                <x-ri-instance-line class="size-5 text-secondary" />
-            </div>
-            <span class="font-medium">{{ $service->label }}</span>
-            </div>
-            <div class="size-5 rounded-md p-0.5
-                @if ($service->status == 'active') text-success bg-success/20 
-                @elseif($service->status == 'suspended' || $service->status == 'cancelled') text-inactive bg-inactive/20
-                @else text-warning bg-warning/20 
-                @endif">
-                @if ($service->status == 'active')
-                    <x-ri-checkbox-circle-fill />
-                @elseif($service->status == 'suspended' || $service->status == 'cancelled')
-                    <x-ri-forbid-fill />
-                @elseif($service->status == 'pending')
-                    <x-ri-error-warning-fill />
-                @endif
-            </div>
+<div @class(['container client-services' => !$dashboard, 'client-services' => $dashboard])>
+    <div class="client-panel">
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold">{{ __('Your services') }}</h1>
+            <p class="mt-3 text-sm text-muted">{{ __('Manage your services and billing information here.') }}</p>
         </div>
-        <div class="text-base text-sm flex gap-1">
-            {{
-                in_array($service->plan->type, ['recurring']) ?  __('services.every_period', [
-                'period' => $service->plan->billing_period > 1 ? $service->plan->billing_period : '',
-                'unit' => trans_choice(__('services.billing_cycles.' . $service->plan->billing_unit),
-                $service->plan->billing_period)
-                ]) : '' }}
-                @if($service->expires_at && $service->expires_at > now())
-                -  {{ __('services.renews_in') }} 
-                <x-tooltip :message="$service->expires_at->translatedFormat(__('general.date_format'))">
-                    {{ $service->expires_at->longAbsoluteDiffForHumans() }}
-                </x-tooltip>
-                @endif
-            </div>
+        <div class="grid sm:grid-cols-2 gap-4 mb-6">
+            <x-form.input name="search" wire:model.live.debounce.300ms="search" :placeholder="__('Search services by name')" :aria-label="__('Search services by name')" />
+            <x-form.select name="status" wire:model.live="status" :aria-label="__('services.status')">
+                <option value="">{{ __('All statuses') }}</option>
+                @foreach (['active', 'pending', 'suspended', 'cancelled'] as $value)
+                    <option value="{{ $value }}">{{ __('services.statuses.' . $value) }}</option>
+                @endforeach
+            </x-form.select>
         </div>
-    </a>
-    @empty
-    <div class="bg-background-secondary border border-neutral p-4 rounded-lg">
-        <p class="text-base text-sm">{{ __('services.no_services') }}</p>
+        <div class="overflow-x-auto">
+            <table class="service-table">
+                <thead>
+                    <tr>
+                        <th>{{ __('services.name') }}</th>
+                        <th>{{ __('services.billing_cycle') }}</th>
+                        <th>{{ __('services.renews_on') }}</th>
+                        <th>{{ __('services.status') }}</th>
+                        <th>{{ __('services.actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($services as $service)
+                    <tr wire:key="service-{{ $service->id }}">
+                        <td>
+                            <a href="{{ route('services.show', $service) }}" wire:navigate class="font-semibold hover:underline">{{ $service->label }}</a>
+                            <p class="text-muted mt-1">{{ $service->product->category->name }}</p>
+                        </td>
+                        <td>
+                            <span class="font-medium">{{ $service->formattedPrice }}</span>
+                            @if($service->plan->type === 'recurring')
+                            <p class="text-muted mt-1">{{ __('services.every_period', ['period' => $service->plan->billing_period > 1 ? $service->plan->billing_period : '', 'unit' => trans_choice(__('services.billing_cycles.' . $service->plan->billing_unit), $service->plan->billing_period)]) }}</p>
+                            @endif
+                        </td>
+                        <td>{{ $service->expires_at?->translatedFormat(__('general.date_format')) ?? '—' }}</td>
+                        <td><span class="service-status service-status-{{ $service->status }}">{{ __('services.statuses.' . $service->status) }}</span></td>
+                        <td>
+                            <a href="{{ route('services.show', $service) }}" wire:navigate class="inline-flex items-center gap-2 border border-neutral rounded-md px-3 py-2 hover:bg-background">
+                                <x-ri-settings-3-line class="size-4" />{{ __('Manage') }}
+                            </a>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="5" class="text-center text-muted py-12">{{ __('services.no_services') }}</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-6">{{ $services->links() }}</div>
     </div>
-    @endforelse
-
-    {{ $services->links() }}
 </div>

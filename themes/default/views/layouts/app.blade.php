@@ -36,7 +36,7 @@
     {!! hook('head') !!}
 </head>
 
-<body class="w-full bg-background text-base min-h-screen flex flex-col antialiased"
+<body class="client-area {{ (isset($sidebar) && $sidebar) ? 'has-sidebar' : '' }} w-full bg-background text-base min-h-screen flex flex-col antialiased"
     x-cloak
     x-data="{
         theme: $persist('system').as('theme_mode'),
@@ -58,7 +58,7 @@
         @if (isset($sidebar) && $sidebar)
         <x-navigation.sidebar title="$title" />
         @endif
-        <div class="{{ (isset($sidebar) && $sidebar) ? 'md:ml-64 rtl:ml-0 rtl:md:mr-64' : '' }} flex flex-col flex-grow overflow-auto">
+        <div class="{{ (isset($sidebar) && $sidebar) ? 'lg:ml-64 rtl:ml-0 rtl:lg:mr-64' : '' }} client-main flex flex-col flex-grow min-w-0">
             <main class="mt-16 grow">
                 {{ $slot }}
             </main>

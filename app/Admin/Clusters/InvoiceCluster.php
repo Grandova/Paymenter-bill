@@ -13,7 +13,7 @@ class InvoiceCluster extends Cluster
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Administration');
+        return __('Finance');
     }
 
     public static function getClusterBreadcrumb(): ?string

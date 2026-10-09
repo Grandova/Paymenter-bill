@@ -89,12 +89,6 @@ class Checkout extends Component
 
         // Update the pricing
         $this->updatePricing();
-
-        // As there is only one plan, config options and checkout config, we can directly call the checkout method to avoid confusion
-        // This is only done when the user is not editing the cart item
-        if ($this->product->plans->count() === 1 && empty($this->configOptions) && empty($this->checkoutConfig)) {
-            $this->checkout();
-        }
     }
 
     public function updatePricing()
@@ -133,7 +127,8 @@ class Checkout extends Component
     // On change of the plan, update the config options
     public function updatedPlanId($value)
     {
-        $this->plan = Plan::findOrFail($value);
+        $this->validateOnly('plan_id');
+        $this->plan = $this->product->plans->findOrFail($value);
         $this->updatePricing();
     }
 
@@ -288,7 +283,9 @@ class Checkout extends Component
 
     public function render()
     {
-        return view('products.checkout')->layoutData([
+        return view('products.checkout', [
+            'products' => $this->category->products()->where('hidden', false)->with(['category', 'plans.prices', 'configOptions.children.plans.prices'])->orderBy('sort')->get(),
+        ])->layoutData([
             'title' => $this->product->name,
             'image' => $this->product->image ? Storage::url($this->product->image) : null,
         ]);

@@ -23,6 +23,8 @@ class Revenue extends ChartWidget
 
     protected ?string $pollingInterval = null;
 
+    protected ?string $maxHeight = '300px';
+
     protected function getFilters(): ?array
     {
         return DashboardPeriod::options();
