@@ -1,4 +1,4 @@
-<div class="container mt-14">
+<div class="client-panel space-y-6">
     @if($invoice = $service->invoices()->where('status', 'pending')->first())
     <div class="w-full mb-4">
         <div class="bg-yellow-600/20 border-l-4 border-yellow-500 text-yellow-300 p-4 rounded-lg">
@@ -10,9 +10,14 @@
         </div>
     </div>
     @endif
-    <div class="bg-background-secondary border border-neutral p-6 rounded-lg mt-2">
+    @if($service->product->server?->extension === 'Clicd' && $extensionView)
+        {!! $extensionView !!}
+        <details class="bg-background-secondary border border-neutral rounded-2xl">
+            <summary class="p-5 cursor-pointer font-medium">账单设置、升级与取消服务</summary>
+    @endif
+    <div class="bg-background-secondary border border-neutral p-6 rounded-2xl">
         <div class="flex flex-col md:flex-row justify-between">
-            <h1 class="text-2xl font-semibold">{{ __('services.services') }}</h1>
+            <h1 class="text-xl font-semibold">{{ $service->label }}</h1>
         </div>
         <div class="grid md:grid-cols-2 gap-4 my-4">
             <div>
@@ -128,8 +133,12 @@
         </div>
     </div>
 
-    @if (count($views) > 0)
-    <div class="bg-primary-800 rounded-lg mt-2">
+    @if($service->product->server?->extension === 'Clicd' && $extensionView)
+        </details>
+    @endif
+
+    @if (count($views) > 0 && $service->product->server?->extension !== 'Clicd')
+    <div class="rounded-2xl">
         @if (count($views) > 1)
         <div class="flex w-fit mb-2 flex-row flex-wrap">
             @foreach ($views as $view)

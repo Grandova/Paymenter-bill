@@ -276,6 +276,6 @@ class Cart extends Component
 
     public function render()
     {
-        return view('cart');
+        return view('cart')->layoutData(['sidebar' => auth()->check()]);
     }
 }

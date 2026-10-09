@@ -53,7 +53,7 @@ class CheckoutTest extends TestCase
         Livewire::test('products.checkout', ['category' => $this->product->product->category, 'product' => $this->product->product->slug])
             ->call('checkout')
             ->assertRedirect(route('cart'));
-        $cart = Cart::where('currency_code', 'USD')->first();
+        $cart = Cart::where('currency_code', 'CNY')->first();
         $this->assertNotNull($cart);
 
         $this->assertNotNull($cart->items()->first());
@@ -65,7 +65,7 @@ class CheckoutTest extends TestCase
         $response->assertSeeText($this->product->product->name);
 
         $this->assertDatabaseHas('carts', [
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
 
         $this->assertDatabaseHas('cart_items', [
@@ -86,7 +86,7 @@ class CheckoutTest extends TestCase
         ]);
         $plan->prices()->create([
             'price' => 20.00,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
 
         $response = $this->get(route('products.checkout', [
@@ -109,21 +109,21 @@ class CheckoutTest extends TestCase
         ]);
         $plan->prices()->create([
             'price' => 20.00,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
 
         // Change plan
         Livewire::test('products.checkout', ['category' => $this->product->product->category, 'product' => $this->product->product->slug])
             ->assertSee($this->product->product->name)
-            ->assertSee('$10.00')
+            ->assertSee('¥10.00')
             ->set('plan_id', $plan->id)
             ->call('updatePricing')
             ->assertSee($this->product->plan->name)
-            ->assertSee('$20.00')
+            ->assertSee('¥20.00')
             ->call('checkout');
 
         $this->assertDatabaseHas('carts', [
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
     }
 
@@ -137,7 +137,7 @@ class CheckoutTest extends TestCase
         ]);
         $plan->prices()->create([
             'price' => 20.00,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
 
         // Add plan
@@ -145,7 +145,7 @@ class CheckoutTest extends TestCase
 
         Livewire::test('products.checkout', ['category' => $this->product->product->category, 'product' => $this->product->product->slug])
             ->assertSee($this->product->product->name)
-            ->assertSee('$10.00')
+            ->assertSee('¥10.00')
             ->set('plan_id', $plan->id)
             ->assertHasErrors(['plan_id' => 'in'])
             ->assertSet('total.price', 10.00);

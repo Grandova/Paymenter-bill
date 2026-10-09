@@ -1,9 +1,19 @@
-<form
-    class="mx-auto flex flex-col gap-2 mt-4 px-6 sm:px-14 pb-10 bg-primary-800 rounded-md xl:max-w-[40%] w-full"
+<div class="auth-shell">
+    <section class="auth-intro">
+        <span class="auth-eyebrow">{{ __('Cloud service center') }}</span>
+        <h1>{{ __('Your cloud, in one place') }}</h1>
+        <p>{{ __('Manage your instances, invoices and support from one account.') }}</p>
+        <div class="auth-features">
+            <div><x-ri-server-line class="size-6" /><span>{{ __('Instance management') }}<small>{{ __('Check status and open your instance console.') }}</small></span></div>
+            <div><x-ri-wallet-3-line class="size-6" /><span>{{ __('Billing and renewals') }}<small>{{ __('View invoices, balances and renewal dates.') }}</small></span></div>
+            <div><x-ri-customer-service-2-line class="size-6" /><span>{{ __('Support tickets') }}<small>{{ __('Keep your service requests in one place.') }}</small></span></div>
+        </div>
+    </section>
+    <form class="auth-card flex flex-col gap-4"
     wire:submit="submit" id="login">
-    <div class="flex flex-col items-center my-14">
-        <x-logo class="h-10" />
-        <h1 class="text-2xl text-center mt-6">{{ __('auth.sign_in_title') }} </h1>
+    <div class="mb-4">
+        <h2 class="text-2xl font-bold">{{ __('auth.sign_in_title') }}</h2>
+        <p class="text-sm text-muted mt-3">{{ __('Sign in to your customer center.') }}</p>
     </div>
     <x-form.input name="email" type="email" :label="__('general.input.email')"
         :placeholder="__('general.input.email_placeholder')" wire:model="email" hideRequiredIndicator required autocomplete="email" />
@@ -55,4 +65,5 @@
         </a>
     </div>
     @endif
-</form>
+    </form>
+</div>

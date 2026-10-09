@@ -19,7 +19,7 @@ class ServiceFactory extends Factory
     {
         return [
             'price' => $this->faker->randomFloat(2, 1),
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'status' => $this->faker->randomElement([
                 Service::STATUS_PENDING,
                 Service::STATUS_ACTIVE,

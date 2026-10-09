@@ -1,27 +1,32 @@
-<div class="container mt-14">
-    <div class="flex flex-col md:grid md:grid-cols-4 gap-8">
-        <div class="flex flex-col col-span-3 gap-4">
+<div class="container">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold">{{ __('Review order') }}</h1>
+        <p class="text-muted mt-2 text-sm">{{ __('Review your services and billing period before checkout.') }}</p>
+    </div>
+    <div class="grid xl:grid-cols-3 gap-6 items-start">
+        <div class="flex flex-col xl:col-span-2 gap-4 min-w-0">
             @if (Cart::items()->count() === 0)
-            <h1 class="text-2xl font-semibold">
+            <h1 class="text-xl font-semibold">
                 {{ __('product.empty_cart') }}
             </h1>
             @endif
             @foreach (Cart::items() as $item)
-            <div class="flex flex-row justify-between w-full bg-background-secondary p-3 rounded-md border border-neutral">
+            <div class="client-panel flex flex-col sm:flex-row justify-between gap-5 w-full">
                 <div class="flex flex-col gap-1">
-                    <h2 class="text-2xl font-semibold">
+                    <h2 class="text-xl font-semibold">
                         {{ $item->product->name }}
                     </h2>
-                    <p class="text-sm">
+                    <p class="text-sm text-muted">{{ $item->plan->name }}</p>
+                    <p class="text-sm text-muted">
                         @foreach ($item->config_options as $option)
                         {{ $option['option_name'] }}: {{ $option['value_name'] }}<br>
                         @endforeach
                     </p>
                 </div>
-                <div class="flex flex-col justify-between items-end gap-4">
+                <div class="flex flex-col justify-between sm:items-end gap-4">
                     <h3 class="text-xl font-semibold p-1">
                         {{ $item->price->format($item->price->total * $item->quantity) }} @if ($item->quantity > 1)
-                        ({{ $item->price }} each)
+                        ({{ __('Price per item') }} {{ $item->price }})
                         @endif
                     </h3>
                     <div class="flex flex-row gap-2">
@@ -57,10 +62,10 @@
             </div>
             @endforeach
         </div>
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 xl:sticky xl:top-24 min-w-0">
             @if (Cart::items()->count() > 0)
-            <div class="flex flex-col gap-2 w-full col-span-1 bg-background-secondary p-3 rounded-md border border-neutral">
-                <h2 class="text-2xl font-semibold mb-3">
+            <div class="client-panel flex flex-col gap-5 w-full">
+                <h2 class="text-xl font-semibold mb-3">
                     {{ __('product.order_summary') }}
                 </h2>
                 <div class="font-semibold flex items-end gap-2">

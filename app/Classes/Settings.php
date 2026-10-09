@@ -660,7 +660,7 @@ class Settings
                     'label' => __('Default Currency'),
                     'type' => 'select',
                     'options' => $currencies,
-                    'default' => 'USD',
+                    'default' => 'CNY',
                     'required' => true,
                 ],
                 [

@@ -141,7 +141,9 @@ location / {
 
 保存并启动，确认进程状态为 **运行中（RUNNING）**。
 
-安装至此完成。打开 `https://bill.example.com`，使用刚才设置的管理员邮箱和密码登录，再访问 `https://bill.example.com/admin` 进入后台。前台和后台默认显示简体中文。
+安装至此完成。打开 `https://bill.example.com`，使用刚才设置的管理员邮箱和密码登录，再访问 `https://bill.example.com/admin` 进入后台。前台和后台默认显示简体中文，默认货币为人民币（CNY）。
+
+开始销售前，为产品设置人民币售价，再按 [彩虹易支付配置说明](epay-zh.md) 填写商户信息。销售 CLICD 云服务器请接着阅读 [CLICD 接入说明](clicd-zh.md)。
 
 ### 常见问题
 

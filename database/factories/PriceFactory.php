@@ -19,7 +19,7 @@ class PriceFactory extends Factory
     {
         return [
             'price' => $this->faker->randomFloat(2, 1, 1000), // Random price between 1 and 1000
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ];
     }
 }

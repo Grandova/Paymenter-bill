@@ -47,7 +47,7 @@ class CurrencyResource extends Resource
                     ->placeholder(__('Enter the currency code')),
                 TextInput::make('name')
                     ->label(__('Name'))
-                    ->helperText(__('Display name for customers, e.g., US Dollar'))
+                    ->helperText(__('Display name for customers, e.g., Chinese Yuan'))
                     ->required()
                     ->maxLength(255)
                     ->placeholder(__('Enter the currency name')),

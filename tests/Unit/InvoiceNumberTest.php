@@ -25,7 +25,7 @@ class InvoiceNumberTest extends TestCase
         $invoice = new Invoice;
         $invoice->user_id = $user->id;
         $invoice->status = Invoice::STATUS_DRAFT;
-        $invoice->currency_code = 'USD';
+        $invoice->currency_code = 'CNY';
         $invoice->save();
 
         $this->assertEquals(1001, $invoice->number);
@@ -39,7 +39,7 @@ class InvoiceNumberTest extends TestCase
         $invoice2 = new Invoice;
         $invoice2->user_id = $user->id;
         $invoice2->status = Invoice::STATUS_DRAFT;
-        $invoice2->currency_code = 'USD';
+        $invoice2->currency_code = 'CNY';
         $invoice2->save();
 
         $this->assertEquals(1002, $invoice2->number);
@@ -62,7 +62,7 @@ class InvoiceNumberTest extends TestCase
         $invoice = new Invoice;
         $invoice->user_id = $user->id;
         $invoice->status = Invoice::STATUS_DRAFT;
-        $invoice->currency_code = 'USD';
+        $invoice->currency_code = 'CNY';
         $invoice->save();
 
         $invoice->items()->create([

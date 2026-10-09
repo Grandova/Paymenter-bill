@@ -68,6 +68,7 @@ class GatewayResource extends Resource
                     ->placeholder(__('Enter the name of the gateway')),
                 Select::make('extension')
                     ->label(__('Gateway'))
+                    ->default('Epay')
                     ->required()
                     ->searchable()
                     ->unique(

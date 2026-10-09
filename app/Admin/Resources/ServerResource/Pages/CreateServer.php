@@ -28,6 +28,7 @@ class CreateServer extends CreateRecord
             return $record;
         }
 
+        $config = collect(ExtensionHelper::getConfig('server', $data['extension'], $data['settings']));
         foreach ($data['settings'] as $key => $value) {
             if (is_null($value)) {
                 continue;
@@ -36,6 +37,7 @@ class CreateServer extends CreateRecord
                 'key' => $key,
             ], [
                 'value' => $value,
+                'encrypted' => $config->firstWhere('name', $key)['encrypted'] ?? false,
             ]);
         }
 

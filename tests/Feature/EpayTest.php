@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Admin\Resources\GatewayResource\Pages\CreateGateway;
 use App\Exceptions\DisplayException;
 use App\Helpers\ExtensionHelper;
-use App\Models\Currency;
 use App\Models\Invoice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,7 +22,6 @@ class EpayTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Currency::create(['code' => 'CNY', 'name' => '人民币', 'prefix' => '¥', 'suffix' => '', 'format' => '1,000.00']);
         $config = ['url' => 'https://pay.example.test', 'pid' => '1001', 'key' => 'test-merchant-key', 'type' => 'alipay'];
         $gateway = (new \ReflectionMethod(CreateGateway::class, 'handleRecordCreation'))->invoke(new CreateGateway, [
             'name' => '彩虹易支付', 'extension' => 'Epay', 'type' => 'gateway', 'settings' => $config,

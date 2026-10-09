@@ -49,13 +49,13 @@ abstract class TestCase extends BaseTestCase
         Price::factory()->create([
             'plan_id' => $plan->id,
             'price' => 10.00,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
 
         $this->assertDatabaseHas('prices', [
             'plan_id' => $plan->id,
             'price' => 10.00,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
 
         return (object) [

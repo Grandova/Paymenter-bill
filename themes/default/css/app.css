@@ -461,3 +461,118 @@ color utility to any element that depends on these defaults.
     border-radius: .6rem;
     background: hsl(var(--color-background));
 }
+
+.catalog-tabs {
+    display: flex;
+    gap: .5rem;
+    overflow-x: auto;
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid hsl(var(--color-neutral));
+}
+.catalog-tabs a {
+    padding: .65rem 1rem;
+    border: 1px solid hsl(var(--color-neutral));
+    border-radius: .5rem;
+    font-size: .875rem;
+    white-space: nowrap;
+}
+.catalog-tabs [aria-current] {
+    color: hsl(var(--color-background-secondary));
+    background: hsl(var(--color-base));
+    border-color: hsl(var(--color-base));
+}
+.catalog-product {
+    padding: 1.5rem;
+    border: 1px solid hsl(var(--color-neutral));
+    border-radius: .65rem;
+}
+.catalog-product:hover {
+    border-color: hsl(var(--color-muted));
+}
+
+.auth-shell {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 5rem;
+    max-width: 68rem;
+    margin: 4rem auto;
+    padding: 0 1.5rem;
+}
+.auth-intro h1 {
+    max-width: 24rem;
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 1.4;
+    margin: 1.5rem 0;
+    letter-spacing: -.04em;
+}
+.auth-intro > p {
+    color: hsl(var(--color-muted));
+    line-height: 1.9;
+}
+.auth-eyebrow {
+    display: inline-block;
+    font-size: .8rem;
+    padding: .45rem .8rem;
+    border: 1px solid hsl(var(--color-neutral));
+    border-radius: 2rem;
+}
+.auth-features {
+    display: grid;
+    gap: 1.75rem;
+    margin-top: 2.75rem;
+}
+.auth-features > div {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.auth-features svg {
+    color: hsl(var(--color-primary));
+    flex-shrink: 0;
+}
+.auth-features span {
+    font-size: .9375rem;
+    font-weight: 600;
+}
+.auth-features small {
+    display: block;
+    margin-top: .4rem;
+    color: hsl(var(--color-muted));
+    font-size: .8125rem;
+    font-weight: 400;
+}
+.auth-card {
+    padding: 2.5rem;
+    background: hsl(var(--color-background-secondary));
+    border: 1px solid hsl(var(--color-neutral));
+    border-radius: 1rem;
+    box-shadow: 0 12px 40px rgb(0 0 0 / .03);
+}
+.auth-register {
+    max-width: 42rem;
+    margin-block: 3rem;
+}
+@media (max-width: 767px) {
+    .auth-shell {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin-block: 2rem;
+    }
+    .auth-intro h1 {
+        max-width: none;
+        font-size: 1.75rem;
+        margin-block: 1rem;
+    }
+    .auth-features {
+        display: none;
+    }
+    .auth-card {
+        padding: 1.5rem;
+    }
+    .auth-register {
+        margin: 2rem 1.5rem;
+    }
+}

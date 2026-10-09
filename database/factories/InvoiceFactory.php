@@ -18,7 +18,7 @@ class InvoiceFactory extends Factory
     public function definition(): array
     {
         return [
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ];
     }
 }

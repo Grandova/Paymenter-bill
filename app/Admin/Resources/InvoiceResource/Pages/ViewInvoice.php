@@ -78,7 +78,7 @@ class ViewInvoice extends ViewRecord
                                     ->color(fn ($record) => in_array($record->reference_type, [Service::class, ServiceUpgrade::class]) ? 'primary' : null),
                                 TextEntry::make('price')
                                     ->label(__('Price'))
-                                    ->money(fn ($record) => $record->invoice->currency_code ?? 'USD'),
+                                    ->money(fn ($record) => $record->invoice->currency_code ?? config('settings.default_currency')),
                                 TextEntry::make('quantity')
                                     ->label(__('Quantity')),
                             ])

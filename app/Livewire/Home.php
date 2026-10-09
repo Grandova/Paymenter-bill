@@ -21,6 +21,6 @@ class Home extends Component
                 ->orderBy('sort')
                 ->get(),
             'title' => __('Home'),
-        ]);
+        ])->layoutData(['sidebar' => auth()->check()]);
     }
 }

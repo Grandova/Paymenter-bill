@@ -125,7 +125,7 @@
                     </div>
                     <div>
                         <p class="font-medium">{{ $method->name }}</p>
-                        <p class="text-sm text-base/50">{{ __('invoices.one_time_payment') }}</p>
+                        <p class="text-sm text-base/50">{{ $method->extension === 'Epay' ? __('Pay in CNY via Epay cashier') : __('invoices.one_time_payment') }}</p>
                     </div>
                 </div>
                 <div

@@ -30,6 +30,9 @@
                         <td>
                             <a href="{{ route('services.show', $service) }}" wire:navigate class="font-semibold hover:underline">{{ $service->label }}</a>
                             <p class="text-muted mt-1">{{ $service->product->category->name }}</p>
+                            @if($service->product->server?->extension === 'Clicd')
+                            <p class="text-muted mt-1 font-mono text-xs">{{ $service->properties->firstWhere('key', 'clicd_ip')?->value ?: $service->properties->firstWhere('key', 'clicd_ipv6')?->value }}</p>
+                            @endif
                         </td>
                         <td>
                             <span class="font-medium">{{ $service->formattedPrice }}</span>
@@ -38,7 +41,12 @@
                             @endif
                         </td>
                         <td>{{ $service->expires_at?->translatedFormat(__('general.date_format')) ?? '—' }}</td>
-                        <td><span class="service-status service-status-{{ $service->status }}">{{ __('services.statuses.' . $service->status) }}</span></td>
+                        <td>
+                            <span class="service-status service-status-{{ $service->status }}">{{ __('services.statuses.' . $service->status) }}</span>
+                            @if($service->product->server?->extension === 'Clicd')
+                            <p class="text-muted mt-2 text-xs">{{ __('Last synced status') }}：{{ ['running' => '运行中', 'stopped' => '已关机', 'missing' => '节点未找到实例'][$service->properties->firstWhere('key', 'clicd_status')?->value] ?? '未同步' }}</p>
+                            @endif
+                        </td>
                         <td>
                             <a href="{{ route('services.show', $service) }}" wire:navigate class="inline-flex items-center gap-2 border border-neutral rounded-md px-3 py-2 hover:bg-background">
                                 <x-ri-settings-3-line class="size-4" />{{ __('Manage') }}

@@ -24,7 +24,7 @@ class ServiceRenewalTest extends TestCase
             'plan_id' => $product->plan->id,
             'product_id' => $product->product->id,
             'status' => 'pending',
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'price' => 10.00, // Set a price for the service
         ]);
 
@@ -32,7 +32,7 @@ class ServiceRenewalTest extends TestCase
         $invoice = Invoice::factory()->create([
             'user_id' => $user->id,
             'status' => 'pending',
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
         $invoice->items()->create([
             'reference_id' => $service->id,
@@ -68,7 +68,7 @@ class ServiceRenewalTest extends TestCase
             'product_id' => $product->product->id,
             'status' => 'active',
             'expires_at' => now()->subDays(10),
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'price' => 10.00, // Set a price for the service
         ]);
 
@@ -76,7 +76,7 @@ class ServiceRenewalTest extends TestCase
         $invoice = Invoice::factory()->create([
             'user_id' => $user->id,
             'status' => 'pending',
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
 
         $invoice->items()->create([
@@ -115,7 +115,7 @@ class ServiceRenewalTest extends TestCase
             'product_id' => $product->product->id,
             'status' => 'suspended',
             'expires_at' => now()->subDays(10),
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'price' => 10.00, // Set a price for the service
         ]);
 
@@ -123,7 +123,7 @@ class ServiceRenewalTest extends TestCase
         $invoice = Invoice::factory()->create([
             'user_id' => $user->id,
             'status' => 'pending',
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
 
         $invoice->items()->create([

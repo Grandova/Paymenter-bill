@@ -56,7 +56,7 @@ class CartConfigOptionChangeTest extends TestCase
         Price::factory()->create([
             'plan_id' => $plan->id,
             'price' => 1.00,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
 
         return $value;

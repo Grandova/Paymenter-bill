@@ -37,7 +37,7 @@ class CronjobTest extends TestCase
             'product_id' => $product->product->id,
             'status' => 'active',
             'expires_at' => now()->addDays(2)->addHour(-1), // Set expires_at to 6 days from now
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'price' => 10.00, // Set a price for the service
         ]);
 
@@ -50,7 +50,7 @@ class CronjobTest extends TestCase
             'user_id' => $user->id,
             'status' => 'pending',
             'due_at' => $service->expires_at,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
     }
 
@@ -59,7 +59,7 @@ class CronjobTest extends TestCase
         $user = User::factory()->create();
 
         $user->credits()->create([
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'amount' => 10.00,
         ]);
 
@@ -76,7 +76,7 @@ class CronjobTest extends TestCase
             'product_id' => $product->product->id,
             'status' => 'active',
             'expires_at' => now()->addDays(2)->addHour(-1), // Set expires_at to 6 days from now
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'price' => 10.00, // Set a price for the service
         ]);
 
@@ -89,7 +89,7 @@ class CronjobTest extends TestCase
             'user_id' => $user->id,
             'status' => 'paid',
             'due_at' => $service->expires_at,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
     }
 
@@ -111,7 +111,7 @@ class CronjobTest extends TestCase
             'product_id' => $product->product->id,
             'status' => 'active',
             'expires_at' => now()->addDays(2)->addHour(-1), // Set expires_at to 6 days from now
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'price' => 0.00, // Set a price for the service
         ]);
 
@@ -143,7 +143,7 @@ class CronjobTest extends TestCase
             'plan_id' => $product->plan->id,
             'product_id' => $product->product->id,
             'status' => 'pending',
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'price' => 10.00,
             'created_at' => now()->subDays(8), // Set created_at to 8 days ago
         ]);
@@ -176,7 +176,7 @@ class CronjobTest extends TestCase
             'product_id' => $product->product->id,
             'status' => 'active',
             'expires_at' => now()->subDays(3), // Set expires_at to 1 day ago
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'price' => 10.00,
         ]);
 
@@ -191,7 +191,7 @@ class CronjobTest extends TestCase
             'user_id' => $user->id,
             'status' => 'pending',
             'due_at' => $service->expires_at,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
 
         Queue::assertPushed(SuspendJob::class, function ($job) use ($service) {
@@ -222,7 +222,7 @@ class CronjobTest extends TestCase
             'product_id' => $product->product->id,
             'status' => 'active',
             'expires_at' => now(), // Set expires_at to 15 days ago
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'price' => 10.00,
         ]);
 
@@ -235,7 +235,7 @@ class CronjobTest extends TestCase
             'user_id' => $user->id,
             'status' => 'pending',
             'due_at' => $service->expires_at,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
 
         // Update due date to be overdue
@@ -261,7 +261,7 @@ class CronjobTest extends TestCase
         $this->assertDatabaseHas('invoices', [
             'user_id' => $user->id,
             'status' => 'cancelled',
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
         ]);
     }
 
@@ -316,7 +316,7 @@ class CronjobTest extends TestCase
             'status' => 'suspended',
             'expires_at' => now()->subDays(15),
             'user_id' => $user->id,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'price' => 10.00,
             'quantity' => 2,
         ]);
@@ -348,7 +348,7 @@ class CronjobTest extends TestCase
             'status' => 'suspended',
             'expires_at' => now()->subDays(15),
             'user_id' => $user->id,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'price' => 10.00,
         ]);
 
@@ -373,7 +373,7 @@ class CronjobTest extends TestCase
             'status' => 'suspended',
             'expires_at' => now()->subDays(15),
             'user_id' => $user->id,
-            'currency_code' => 'USD',
+            'currency_code' => 'CNY',
             'price' => 10.00,
         ]);
 

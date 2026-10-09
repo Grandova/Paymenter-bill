@@ -41,13 +41,13 @@ class CartCurrencyTest extends TestCase
             'currency_code' => 'EUR',
         ]);
 
-        // Cart stamped USD, then the session diverges (e.g. expired back to the default currency).
-        $cart = $this->makeCartWithItem('USD');
+        // Cart stamped CNY, then the session diverges (e.g. expired back to the default currency).
+        $cart = $this->makeCartWithItem('CNY');
         session(['currency' => 'EUR']);
 
         $price = $cart->items->first()->price;
 
-        $this->assertEquals('USD', $price->currency->code);
+        $this->assertEquals('CNY', $price->currency->code);
         $this->assertEquals(10.00, (float) $price->price);
     }
 
@@ -55,10 +55,10 @@ class CartCurrencyTest extends TestCase
     {
         Currency::create(['code' => 'EUR', 'name' => 'Euro', 'suffix' => 'EUR', 'format' => '1.000,00']);
 
-        // Cart locked to EUR, but the plan is only priced in USD: must be unavailable, not free.
+        // Cart locked to EUR, but the plan is only priced in CNY: must be unavailable, not free.
         $cart = $this->makeCartWithItem('EUR');
 
-        session(['currency' => 'USD']);
+        session(['currency' => 'CNY']);
 
         $price = $cart->items->first()->price;
 

@@ -37,16 +37,12 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        // Seed default currency (USD)
-        if (Currency::count() === 0) {
-            Currency::create([
-                'code' => 'USD',
-                'name' => 'US Dollar',
-                'prefix' => '$',
-                'suffix' => '',
-                'format' => '1,000.00',
-            ]);
-        }
+        Currency::firstOrCreate(['code' => 'CNY'], [
+            'name' => '人民币',
+            'prefix' => '¥',
+            'suffix' => '',
+            'format' => '1,000.00',
+        ]);
 
         SettingsProvider::flushCache();
 
