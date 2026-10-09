@@ -91,9 +91,9 @@ class Manage extends Component
             }
             $action();
         } catch (ConnectionException $e) {
-            $this->error = '无法连接 CLICD 节点，请稍后重试或联系管理员。';
+            $this->error = '无法连接服务器节点，请稍后重试或联系管理员。';
         } catch (RequestException $e) {
-            $this->error = 'CLICD 接口错误（' . $e->response->status() . '）：' . ($e->response->json('message') ?: '请求未完成');
+            $this->error = '节点接口错误（' . $e->response->status() . '）：' . ($e->response->json('message') ?: '请求未完成');
         } catch (RuntimeException $e) {
             $this->error = $e->getMessage();
         }
@@ -143,10 +143,10 @@ class Manage extends Component
             $instance = $client->container($id);
             $data = $client->request('POST', 'sub-user/create', ['container_name' => $instance['name']]);
             if (($data['container_uuids'] ?? []) !== [$instance['uuid']]) {
-                throw new RuntimeException('节点返回的控制台账户并非仅绑定当前实例，请管理员检查 CLICD 子用户设置。');
+                throw new RuntimeException('节点返回的控制台账户并非仅绑定当前实例，请管理员检查 实例子账户设置。');
             }
             if (empty($data['access_code']) || empty($data['password'])) {
-                throw new RuntimeException('CLICD 未返回控制台访问码或密码。');
+                throw new RuntimeException('节点未返回控制台访问码或密码。');
             }
             $settings = $this->service->product->server->settings;
             $url = $settings->firstWhere('key', 'panel_url')?->value ?: $settings->firstWhere('key', 'api_url')->value;

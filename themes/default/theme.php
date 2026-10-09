@@ -2,8 +2,8 @@
 
 return [
     'name' => __('Default'),
-    'author' => 'Paymenter',
-    'url' => 'https://paymenter.org',
+    'author' => '云服务',
+    'url' => 'https://github.com/Grandova/Paymenter-bill',
 
     'settings' => [
         [
@@ -44,31 +44,31 @@ return [
             'name' => 'home_page_text',
             'label' => __('Home Page Text'),
             'type' => 'markdown',
-            'default' => __('Welcome to Paymenter!'),
+            'default' => __('Welcome to your cloud service center'),
         ],
         [
             'name' => 'primary',
             'label' => __('Primary - Brand Color (Light)'),
             'type' => 'color',
-            'default' => 'hsl(222, 38%, 15%)',
+            'default' => 'hsl(351, 72%, 47%)',
         ],
         [
             'name' => 'secondary',
             'label' => __('Secondary - Brand Color (Light)'),
             'type' => 'color',
-            'default' => 'hsl(237, 33%, 60%)',
+            'default' => 'hsl(351, 72%, 47%)',
         ],
         [
             'name' => 'neutral',
             'label' => __('Borders, Accents... (Light)'),
             'type' => 'color',
-            'default' => 'hsl(220, 13%, 89%)',
+            'default' => 'hsl(220, 9%, 89%)',
         ],
         [
             'name' => 'base',
             'label' => __('Base - Text Color (Light)'),
             'type' => 'color',
-            'default' => 'hsl(222, 35%, 15%)',
+            'default' => 'hsl(215, 18%, 25%)',
         ],
         [
             'name' => 'muted',
@@ -86,7 +86,7 @@ return [
             'name' => 'background',
             'label' => __('Background - Color (Light)'),
             'type' => 'color',
-            'default' => 'hsl(220, 14%, 96%)',
+            'default' => 'hsl(220, 12%, 97%)',
         ],
         [
             'name' => 'background-secondary',
@@ -98,13 +98,13 @@ return [
             'name' => 'dark-primary',
             'label' => __('Primary - Brand Color (Dark)'),
             'type' => 'color',
-            'default' => 'hsl(229, 100%, 64%)',
+            'default' => 'hsl(351, 85%, 68%)',
         ],
         [
             'name' => 'dark-secondary',
             'label' => __('Secondary - Brand Color (Dark)'),
             'type' => 'color',
-            'default' => 'hsl(237, 33%, 60%)',
+            'default' => 'hsl(351, 72%, 47%)',
         ],
         [
             'name' => 'dark-neutral',

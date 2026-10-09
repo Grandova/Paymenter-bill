@@ -47,7 +47,6 @@ class Index extends Component
             'services' => $query->paginate(config('settings.pagination')),
         ])->layoutData([
             'title' => __('Services'),
-            'sidebar' => true,
         ]);
     }
 }

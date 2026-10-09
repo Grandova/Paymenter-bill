@@ -239,7 +239,6 @@ class Show extends Component
     {
         return view('invoices.show')->layoutData([
             'title' => __('invoices.invoice', ['id' => $this->invoice->number]),
-            'sidebar' => true,
         ]);
     }
 

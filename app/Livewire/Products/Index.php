@@ -37,7 +37,6 @@ class Index extends Component
     public function render()
     {
         return view('products.index')->layoutData([
-            'sidebar' => auth()->check(),
             'title' => $this->category->name,
             'image' => $this->category->image ? Storage::url($this->category->image) : null,
         ]);

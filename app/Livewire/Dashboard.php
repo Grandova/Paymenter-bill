@@ -6,8 +6,6 @@ class Dashboard extends Component
 {
     public function render()
     {
-        return view('dashboard')->layoutData([
-            'sidebar' => true,
-        ]);
+        return view('dashboard');
     }
 }

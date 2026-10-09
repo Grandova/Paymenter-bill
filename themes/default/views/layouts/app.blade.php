@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>
-        {{ config('app.name', 'Paymenter') }}
+        {{ config('app.name', '云服务') }}
         @isset($title)
         - {{ $title }}
         @endisset
@@ -19,8 +19,8 @@
     <link rel="icon" href="{{ Storage::url(config('settings.favicon')) }}">
     @endif
     @isset($title)
-    <meta content="{{ isset($title) ? config('app.name', 'Paymenter') . ' - ' . $title : config('app.name', 'Paymenter') }}" property="og:title">
-    <meta content="{{ isset($title) ? config('app.name', 'Paymenter') . ' - ' . $title : config('app.name', 'Paymenter') }}" name="title">
+    <meta content="{{ isset($title) ? config('app.name', '云服务') . ' - ' . $title : config('app.name', '云服务') }}" property="og:title">
+    <meta content="{{ isset($title) ? config('app.name', '云服务') . ' - ' . $title : config('app.name', '云服务') }}" name="title">
     @endisset
     @isset($description)
     <meta content="{{ $description }}" property="og:description">
@@ -36,7 +36,7 @@
     {!! hook('head') !!}
 </head>
 
-<body class="client-area {{ (isset($sidebar) && $sidebar) ? 'has-sidebar' : '' }} w-full bg-background text-base min-h-screen flex flex-col antialiased"
+<body class="client-area w-full bg-background text-base min-h-screen flex flex-col antialiased"
     x-cloak
     x-data="{
         theme: $persist('system').as('theme_mode'),
@@ -55,11 +55,8 @@
     {!! hook('body') !!}
     <x-navigation />
     <div class="w-full flex flex-grow">
-        @if (isset($sidebar) && $sidebar)
-        <x-navigation.sidebar title="$title" />
-        @endif
-        <div class="{{ (isset($sidebar) && $sidebar) ? 'lg:ml-64 rtl:ml-0 rtl:lg:mr-64' : '' }} client-main flex flex-col flex-grow min-w-0">
-            <main class="mt-16 grow">
+        <div class="client-main flex flex-col flex-grow min-w-0">
+            <main class="client-content grow">
                 {{ $slot }}
             </main>
             <x-notification />

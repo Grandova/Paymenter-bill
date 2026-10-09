@@ -3,7 +3,7 @@
         <div class="w-full bg-background-secondary py-10 sm:py-14 border-b border-neutral">
             <div class="container">
                 <article class="prose dark:prose-invert max-w-full ">
-                    {!! Str::markdown(theme('home_page_text', 'Welcome to Paymenter'), [
+                    {!! Str::markdown(theme('home_page_text', __('Welcome to your cloud service center')), [
                     'allow_unsafe_links' => false,
                     'renderer' => [
                     'soft_break' => "<br>"

@@ -39,7 +39,6 @@ class Cancel extends Component
     {
         return view('services.cancel')->layoutData([
             'title' => __('services.cancellation', ['service' => $this->service->product->name]),
-            'sidebar' => true,
         ]);
     }
 }

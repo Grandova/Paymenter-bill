@@ -37,7 +37,7 @@ class Settings
                     'label' => __('Company Name'),
                     'type' => 'text',
                     'override' => 'app.name',
-                    'default' => 'Paymenter',
+                    'default' => '云服务',
                 ],
                 [
                     'name' => 'timezone',

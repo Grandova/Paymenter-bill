@@ -1,12 +1,16 @@
-<nav class="client-topbar" x-data="{ menuOpen: false }" @keydown.escape.window="menuOpen = false">
+<nav class="client-topbar" x-data="{ menuOpen: false }" @keydown.escape.window="menuOpen = false" x-on:livewire:navigating.window="menuOpen = false">
     <div class="client-brand">
         <button @click="menuOpen = !menuOpen" class="client-menu-button" aria-label="{{ __('Toggle Menu') }}" :aria-expanded="menuOpen">
             <x-ri-menu-line class="size-5" />
         </button>
         <a href="{{ auth()->check() ? route('dashboard') : route('home') }}" wire:navigate class="flex items-center gap-2 min-w-0">
+            @if(config('settings.logo') || config('settings.logo_dark'))
             <x-logo class="h-8" />
+            @else
+            <span class="client-brand-icon"><x-ri-cloud-line class="size-5" /></span>
+            @endif
             @if(theme('logo_display', 'logo-and-name') != 'logo-only')
-            <span class="text-lg font-bold truncate">{{ config('app.name') }}</span>
+            <span class="client-brand-name text-lg font-semibold truncate">{{ config('app.name') }}</span>
             @endif
         </a>
     </div>
@@ -44,10 +48,6 @@
             <x-dropdown :showArrow="false" width="w-64">
                 <x-slot:trigger>
                     <img src="{{ auth()->user()->avatar }}" class="size-8 rounded-full" alt="{{ __('Open user menu') }}" />
-                    <span class="hidden xl:flex flex-col text-left ml-3 max-w-40">
-                        <span class="truncate">{{ auth()->user()->name }}</span>
-                        <span class="truncate text-xs font-normal text-muted">{{ auth()->user()->email }}</span>
-                    </span>
                 </x-slot:trigger>
                 <x-slot:content>
                     @foreach (\App\Classes\Navigation::getAccountDropdownLinks() as $nav)
@@ -69,9 +69,9 @@
     <template x-teleport="body">
         <div x-show="menuOpen" x-cloak class="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="{{ __('Navigation') }}">
             <div class="absolute inset-0 bg-black/30" @click="menuOpen = false"></div>
-            <aside class="relative w-72 max-w-[85vw] h-full bg-background-secondary shadow-xl overflow-y-auto" x-trap.inert.noscroll="menuOpen">
+            <aside class="relative w-80 max-w-[85vw] h-full bg-background-secondary shadow-xl overflow-y-auto" x-trap.inert.noscroll="menuOpen">
                 <div class="h-16 flex items-center justify-between px-5 border-b border-neutral">
-                    <span class="font-semibold">{{ config('app.name') }}</span>
+                    <span class="font-semibold">{{ config('app.name', '云服务') }}</span>
                     <button @click="menuOpen = false" aria-label="{{ __('Close') }}" class="p-2"><x-ri-close-line class="size-5" /></button>
                 </div>
                 <x-navigation.sidebar-links />

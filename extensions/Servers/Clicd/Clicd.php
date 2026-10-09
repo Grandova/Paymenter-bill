@@ -123,7 +123,7 @@ class Clicd extends Server
         $id = LifecycleService::identifier($service);
         $instance = $client->container($id);
         if ((float) ($settings['disk_gb'] ?? $instance['disk_gb']) !== (float) $instance['disk_gb']) {
-            throw new \RuntimeException('Unsupported：当前 CLICD 接口不支持磁盘扩容，请管理员处理。');
+            throw new \RuntimeException('当前服务器接口不支持磁盘扩容，请管理员处理。');
         }
         if (($settings['virtualization'] ?? 'lxc') !== ($instance['virtualization'] ?? 'lxc')) {
             throw new \RuntimeException('Unsupported：不能通过升级套餐切换虚拟化类型。');

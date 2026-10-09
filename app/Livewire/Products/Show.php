@@ -20,7 +20,6 @@ class Show extends Component
     public function render()
     {
         return view('products.show')->layoutData([
-            'sidebar' => auth()->check(),
             'title' => $this->product->name,
             'image' => $this->product->image ? Storage::url($this->product->image) : null,
         ]);

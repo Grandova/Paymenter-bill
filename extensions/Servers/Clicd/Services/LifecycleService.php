@@ -50,7 +50,7 @@ class LifecycleService
             $images = $this->client->request('GET', 'images/enabled', ['type' => $type]);
             $image = $properties['os'] ?? $settings['template_id'] ?? '';
             if (!in_array($image, array_column($images, 'id'), true)) {
-                throw new RuntimeException('所选镜像未下载或未启用，请检查 CLICD 节点。');
+                throw new RuntimeException('所选镜像未下载或未启用，请检查 服务器节点。');
             }
             $payload = ['name' => $name, 'virtualization' => $type, 'template_id' => $image, 'ssh_auth_mode' => 'auto_password',
                 'traffic_mode' => 'total', 'expires_at' => $service->expires_at?->endOfDay()->toIso8601String() ?? ''];
@@ -81,11 +81,11 @@ class LifecycleService
     public function sync(Service $service, array $instance): void
     {
         if (empty($instance['uuid']) || empty($instance['name'])) {
-            throw new RuntimeException('CLICD 实例响应缺少 UUID 或名称');
+            throw new RuntimeException('实例响应缺少 UUID 或名称');
         }
         $current = $service->properties()->where('key', 'clicd_instance_uuid')->value('value');
         if ($current && $current !== $instance['uuid']) {
-            throw new RuntimeException('CLICD 返回的实例与当前服务不匹配');
+            throw new RuntimeException('节点返回的实例与当前服务不匹配');
         }
         $data = [
             'clicd_instance_uuid' => $instance['uuid'], 'clicd_instance_id' => $instance['id'], 'clicd_instance_name' => $instance['name'],
@@ -121,7 +121,7 @@ class LifecycleService
                         return;
                     }
                 }
-                throw new RuntimeException('CLICD 任务仍在执行，请在实例页面查看结果。');
+                throw new RuntimeException('节点任务仍在执行，请在实例页面查看结果。');
             }
         });
     }
@@ -129,9 +129,9 @@ class LifecycleService
     public function storeTask(Service $service, array $result): void
     {
         if (empty($result['task_id'])) {
-            throw new RuntimeException('CLICD 未返回任务 ID');
+            throw new RuntimeException('节点未返回任务 ID');
         }
-        $service->properties()->updateOrCreate(['key' => 'clicd_task'], ['name' => 'CLICD 执行任务', 'value' => $result['task_id']]);
+        $service->properties()->updateOrCreate(['key' => 'clicd_task'], ['name' => '服务器执行任务', 'value' => $result['task_id']]);
     }
 
     public function task(Service $service): ?array
@@ -147,7 +147,7 @@ class LifecycleService
         if (in_array($task['status'], ['done', 'failed'], true)) {
             $service->properties()->where('key', 'clicd_task')->delete();
             if ($task['status'] === 'failed') {
-                throw new RuntimeException('CLICD 任务失败：' . ($task['error'] ?? $id));
+                throw new RuntimeException('节点任务失败：' . ($task['error'] ?? $id));
             }
 
             return null;

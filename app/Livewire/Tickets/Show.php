@@ -82,7 +82,6 @@ class Show extends Component
     public function render()
     {
         return view('tickets.show')->layoutData([
-            'sidebar' => true,
         ]);
     }
 }

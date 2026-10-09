@@ -92,7 +92,6 @@ class PaymentMethods extends Component
             'transactions' => Auth::user()->transactions()->with(['invoice', 'gateway'])->latest()->paginate(config('settings.pagination')),
             'billingAgreements' => Auth::user()->billingAgreements()->latest()->get(),
         ])->layoutData([
-            'sidebar' => true,
             'title' => __('Payment Methods'),
         ]);
     }

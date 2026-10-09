@@ -65,7 +65,6 @@ class Account extends ComponentWithProperties
     public function render()
     {
         return view('client.account.index')->layoutData([
-            'sidebar' => true,
             'title' => __('Account'),
         ]);
     }

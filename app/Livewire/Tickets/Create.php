@@ -94,7 +94,6 @@ class Create extends Component
             'services' => $user->services()->orderBy('id', 'desc')->get(),
         ])->layoutData([
             'title' => __('Create Ticket'),
-            'sidebar' => true,
         ]);
     }
 }

@@ -5,7 +5,7 @@
     --vm-muted:#778396;
     --vm-line:#e8edf3;
     --vm-text:#26364b;
-    --vm-blue:#3567e8;
+    --vm-accent:#cf2843;
     color:var(--vm-text);
     font-size:14px;
     text-align:left;
@@ -15,7 +15,7 @@
     --vm-muted:#94a3b8;
     --vm-line:#303948;
     --vm-text:#e2e8f0;
-    --vm-blue:#80a4ff;
+    --vm-accent:#f0647b;
 }
 .vm-console h2,.vm-console h3,.vm-console h4,.vm-console p {
     margin:0;
@@ -76,8 +76,8 @@
     width:56px;
     height:56px;
     border-radius:16px;
-    background:#3567e812;
-    color:var(--vm-blue);
+    background:#cf284312;
+    color:var(--vm-accent);
     flex-shrink:0;
 }
 .vm-server-icon svg {
@@ -106,8 +106,8 @@
     white-space:nowrap;
 }
 .vm-console button:hover {
-    border-color:var(--vm-blue);
-    color:var(--vm-blue);
+    border-color:var(--vm-accent);
+    color:var(--vm-accent);
 }
 .vm-console button:disabled {
     opacity:.45;
@@ -115,8 +115,8 @@
 }
 .vm-console button.vm-primary {
     color:white;
-    background:#3567e8;
-    border-color:#3567e8;
+    background:var(--vm-accent);
+    border-color:var(--vm-accent);
 }
 .vm-console .vm-danger {
     color:#d84e5d;
@@ -163,8 +163,8 @@
 .vm-stat,.vm-panel {
     background:var(--vm-bg);
     border:1px solid var(--vm-line);
-    border-radius:12px;
-    padding:24px;
+    border-radius:4px;
+    padding:18px;
 }
 .vm-stat>span {
     display:block;
@@ -188,7 +188,7 @@
 .vm-meter i {
     display:block;
     height:100%;
-    background:#5d88f1;
+    background:#cf2843;
     border-radius:10px;
 }
 .vm-columns {
@@ -219,22 +219,16 @@
     margin:0;
 }
 .vm-console-access {
-    margin-top:24px;
-    padding-top:20px;
+    margin-top:12px;
+    padding-top:12px;
     border-top:1px solid var(--vm-line);
 }
 .vm-console-access p {
     font-size:12px;
     margin:8px 0 14px;
 }
-.vm-console-credentials {
-    margin:16px 0;
-}
 .vm-console-credentials a {
-    color:var(--vm-blue);
-}
-.vm-console-credentials .vm-actions {
-    margin-top:12px;
+    color:var(--vm-accent);
 }
 .vm-console label {
     font-size:12px;
@@ -255,8 +249,8 @@
     margin-top:6px;
 }
 .vm-console input:focus {
-    outline:2px solid #3567e840;
-    border-color:var(--vm-blue);
+    outline:2px solid #cf284340;
+    border-color:var(--vm-accent);
 }
 .vm-message {
     padding:14px 18px;
@@ -284,7 +278,7 @@
     color:var(--vm-text);
 }
 .vm-loading {
-    color:var(--vm-blue);
+    color:var(--vm-accent);
     padding:10px;
 }
 .vm-footer {
@@ -292,6 +286,73 @@
     color:var(--vm-muted);
     padding-top:18px;
     text-align:right;
+}
+.vm-overview {
+    overflow:hidden;
+    margin-bottom:20px;
+    background:var(--vm-bg);
+    border:1px solid var(--vm-line);
+    border-radius:4px;
+}
+.vm-overview .vm-header {
+    border:0;
+    border-radius:0;
+    padding:20px 24px;
+}
+.vm-overview .vm-toolbar {
+    border:0;
+    border-top:1px solid var(--vm-line);
+    border-radius:0;
+    margin:0;
+    padding:12px 24px;
+}
+.vm-power-start {
+    color:#178148!important;
+    border-color:#c7e5d2!important;
+    background:#f3fbf6!important;
+}
+.vm-access-heading {
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    margin-bottom:16px;
+}
+.vm-access-heading .vm-access-close {
+    padding:6px;
+}
+.vm-console-credentials {
+    margin:0 0 18px;
+    border-radius:4px;
+}
+.vm-console-credentials .vm-actions {
+    margin-top:12px;
+}
+.vm-console .vm-actions a {
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    border-radius:4px;
+    padding:8px 12px;
+    color:var(--vm-accent);
+    text-decoration:none;
+}
+.vm-console .vm-actions a.vm-primary {
+    color:#fff;
+}
+.vm-connection {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+}
+.vm-connection button {
+    padding:4px 8px;
+    color:var(--vm-accent);
+    font-size:12px;
+}
+.vm-panel h3 {
+    margin-bottom:4px;
 }
 @media(max-width:1100px) {
     .vm-toolbar {
@@ -306,7 +367,7 @@
 }
 @media(max-width:600px) {
     .vm-header {
-        padding:18px;
+        padding:16px;
         align-items:flex-start;
         flex-direction:column;
     }
@@ -317,7 +378,7 @@
         font-size:19px;
     }
     .vm-toolbar {
-        padding:14px 18px;
+        padding:12px 16px;
         gap:12px;
     }
     .vm-stat,.vm-panel {
@@ -334,6 +395,19 @@
     }
     .vm-footer {
         text-align:left;
+    }
+    .vm-overview .vm-header {
+        padding:16px;
+    }
+    .vm-overview .vm-toolbar {
+        padding:12px 16px;
+    }
+    .vm-overview .vm-actions {
+        width:100%;
+    }
+    .vm-overview .vm-toolbar .vm-actions button {
+        flex:1;
+        padding-inline:8px;
     }
 }
 </style>

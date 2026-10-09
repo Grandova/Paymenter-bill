@@ -156,7 +156,6 @@ class Show extends Component
 
         return view('services.show', ['extensionView' => $view])->layoutData([
             'title' => __('Services'),
-            'sidebar' => true,
         ]);
     }
 }

@@ -286,7 +286,6 @@ class Checkout extends Component
         return view('products.checkout', [
             'products' => $this->category->products()->where('hidden', false)->with(['category', 'plans.prices', 'configOptions.children.plans.prices'])->orderBy('sort')->get(),
         ])->layoutData([
-            'sidebar' => auth()->check(),
             'title' => $this->product->name,
             'image' => $this->product->image ? Storage::url($this->product->image) : null,
         ]);

@@ -239,16 +239,6 @@ color utility to any element that depends on these defaults.
     padding: .9rem 1rem;
     font-size: .8125rem;
 }
-.client-sidebar {
-    position: fixed;
-    inset: 4rem auto 0 0;
-    width: 16rem;
-    flex-direction: column;
-    background: hsl(var(--color-background-secondary));
-    border-right: 1px solid hsl(var(--color-neutral));
-    z-index: 20;
-    overflow-y: auto;
-}
 .client-sidebar-links {
     display: flex;
     flex-direction: column;
@@ -391,15 +381,6 @@ color utility to any element that depends on these defaults.
 .checkout-summary .client-button {
     min-height: 3rem;
     padding-inline: 1.5rem;
-}
-@media (min-width: 1024px) {
-    .has-sidebar .client-brand {
-    width: 14.5rem;
-    flex-shrink: 0;
-}
-    .has-sidebar .client-brand .client-menu-button {
-    display: none;
-}
 }
 @media (max-width: 639px) {
     .client-topbar {
@@ -554,6 +535,194 @@ color utility to any element that depends on these defaults.
 .auth-register {
     max-width: 42rem;
     margin-block: 3rem;
+}
+
+.client-area {
+    background: hsl(var(--color-background));
+}
+.client-area .client-topbar {
+    height: 3.75rem;
+    padding-inline: 1.25rem;
+    color: #f9fafb;
+    background: #202124;
+    border: 0;
+}
+.client-topbar .client-brand {
+    gap: .9rem;
+}
+.client-topbar .client-brand > a {
+    gap: .65rem;
+}
+.client-topbar .client-brand-name {
+    font-size: .95rem;
+}
+.client-brand-icon {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    color: #fff;
+    background: #d92743;
+    border-radius: .45rem;
+}
+.client-topbar .client-menu-button {
+    display: grid;
+    border-radius: .4rem;
+}
+.client-topbar .client-menu-button:hover,
+.client-topbar .client-brand > a:hover {
+    color: #fff;
+    opacity: .8;
+}
+.client-topbar .client-order-menu > div > button {
+    min-height: 2.35rem;
+    padding: .45rem .85rem;
+    color: #fff;
+    background: #303134;
+    border: 1px solid #44464a;
+    border-radius: .4rem;
+}
+.client-topbar .client-credit {
+    min-height: 2.35rem;
+    padding: .45rem .7rem;
+    background: #303134;
+}
+.client-topbar > div:last-of-type > .border {
+    border-color: #44464a;
+}
+.client-area .client-main {
+    width: 100%;
+    margin: 0;
+}
+.client-content {
+    width: min(100%, 1440px);
+    margin: 0 auto;
+    padding: 1.5rem 1.5rem 3rem;
+}
+.client-area .container {
+    max-width: 1440px;
+}
+.client-content .container {
+    padding-inline: 0;
+}
+.client-area main > .container {
+    margin-block: 0;
+}
+.client-area .client-dashboard {
+    padding-top: .75rem;
+}
+.client-area .client-stat,
+.client-area .client-panel,
+.client-area .card {
+    border-radius: .35rem;
+    box-shadow: none;
+}
+.client-area .client-stat {
+    min-height: 6.5rem;
+    padding: 1.15rem 1.25rem;
+}
+.client-area .client-stat strong {
+    font-size: 1.5rem;
+}
+.client-area .client-panel {
+    padding: 1.5rem;
+}
+.client-area .service-table {
+    border-collapse: collapse;
+}
+.client-area .service-table th {
+    padding: .8rem 1rem;
+    font-size: .8rem;
+    background: hsl(var(--color-background));
+}
+.client-area .service-table td {
+    padding: .85rem 1rem;
+}
+.client-area .service-status-active {
+    color: #178148;
+    background: #e6f4ec;
+}
+.client-area .client-nav-link {
+    border-radius: .35rem;
+}
+.client-area .client-nav-link.is-active {
+    color: #c51e3a;
+    background: #fce9ed;
+}
+.client-area .client-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    align-items: center;
+    width: 100%;
+    min-height: 3.75rem;
+    padding: .75rem 1.5rem;
+    color: #d1d5db;
+    font-size: .8125rem;
+    background: #202124;
+}
+.client-footer a {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    color: #fff;
+}
+.client-area .catalog-tabs [aria-current] {
+    background: #cf2843;
+    border-color: #cf2843;
+}
+.client-area .location-option[aria-current] {
+    border-color: #cf2843;
+    box-shadow: 0 0 0 1px #cf2843;
+}
+.client-area .plan-option:has(input:checked) {
+    border-color: #cf2843;
+    box-shadow: 0 0 0 1px #cf2843;
+}
+.client-area .checkout-option:has(input:checked) {
+    border-color: #cf2843;
+}
+.client-area button.bg-primary,
+.client-area a.bg-primary,
+.client-area .client-button.bg-primary {
+    background-color: #cf2843;
+}
+.client-area button.bg-primary:hover,
+.client-area a.bg-primary:hover,
+.client-area .client-button.bg-primary:hover {
+    background-color: #b71f39;
+}
+.client-area .auth-shell {
+    max-width: 70rem;
+    margin-block: 3rem;
+}
+.client-area .auth-eyebrow {
+    color: #c51e3a;
+    border-color: #eccbd2;
+}
+.client-area .auth-card {
+    border-radius: .4rem;
+    box-shadow: none;
+}
+@media (max-width: 639px) {
+    .client-area .client-topbar {
+        height: 3.5rem;
+        padding-inline: .75rem;
+        gap: .35rem;
+    }
+    .client-area .client-content {
+        padding: 1rem .75rem 2rem;
+    }
+    .client-area .client-panel {
+        padding: 1rem;
+    }
+    .client-area .client-stat {
+        min-height: 5.5rem;
+        padding: .85rem;
+    }
+    .client-area .client-footer {
+        padding-inline: .75rem;
+    }
 }
 @media (max-width: 767px) {
     .auth-shell {

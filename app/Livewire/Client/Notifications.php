@@ -153,7 +153,6 @@ class Notifications extends Component
     public function render()
     {
         return view('client.account.notifications')->layoutData([
-            'sidebar' => true,
             'title' => __('Notifications'),
         ]);
     }

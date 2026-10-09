@@ -10,13 +10,13 @@
             <div x-show="expanded" x-collapse x-cloak class="pl-7">
                 @foreach ($nav['children'] as $child)
                     @if ($child['condition'] ?? true)
-                    <a href="{{ $child['url'] }}" @if($child['spa'] ?? true) wire:navigate @endif @class(['client-nav-link', 'is-active' => $child['active']])>{{ $child['name'] }}</a>
+                    <a href="{{ $child['url'] }}" @click="menuOpen = false" @if($child['spa'] ?? true) wire:navigate @endif @class(['client-nav-link', 'is-active' => $child['active']])>{{ $child['name'] }}</a>
                     @endif
                 @endforeach
             </div>
         </div>
         @else
-        <a href="{{ $nav['url'] }}" @if($nav['spa'] ?? true) wire:navigate @endif @class(['client-nav-link', 'is-active' => $nav['active']])>
+        <a href="{{ $nav['url'] }}" @click="menuOpen = false" @if($nav['spa'] ?? true) wire:navigate @endif @class(['client-nav-link', 'is-active' => $nav['active']])>
             @isset($nav['icon'])<x-dynamic-component :component="$nav['icon']" class="size-5 text-muted" />@endisset
             {{ $nav['name'] }}
         </a>

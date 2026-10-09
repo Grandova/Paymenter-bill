@@ -16,7 +16,6 @@ class Index extends Component
             'invoices' => Auth::user()->invoices()->with(['user', 'snapshot', 'items'])->orderBy('id', 'desc')->paginate(config('settings.pagination')),
         ])->layoutData([
             'title' => __('invoices.invoices'),
-            'sidebar' => true,
         ]);
     }
 }

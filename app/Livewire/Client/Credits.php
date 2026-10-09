@@ -122,7 +122,6 @@ class Credits extends Component
     public function render()
     {
         return view('client.account.credits')->layoutData([
-            'sidebar' => true,
             'title' => __('Add Credits'),
         ]);
     }

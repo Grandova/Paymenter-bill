@@ -20,7 +20,7 @@ class ClicdClient
 
         $response->throw();
         if ($response->json('success') !== true) {
-            throw new RuntimeException($response->json('message') ?: 'CLICD 返回了无效的响应');
+            throw new RuntimeException($response->json('message') ?: '服务器节点返回了无效响应');
         }
 
         return $response->json('data');
