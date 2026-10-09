@@ -11,16 +11,26 @@
         <x-form.input name="last_name" type="text" :label="__('general.input.last_name')"
             :placeholder="__('general.input.last_name_placeholder')" wire:model="last_name" required />
 
-        <x-form.input name="email" type="email" :label="__('general.input.email')"
-            :placeholder="__('general.input.email_placeholder')" required wire:model="email" divClass="col-span-2" />
+        @if(config('settings.mail_verify_on_register'))
+            <div class="col-span-2">
+                <x-form.input name="email" type="email" :label="__('general.input.email')"
+                    :placeholder="__('general.input.email_placeholder')" required wire:model="email" />
+                <x-button.secondary type="button" wire:click="sendVerificationCode" wire:loading.attr="disabled" wire:target="sendVerificationCode" class="mt-2">
+                    获取邮箱验证码
+                </x-button.secondary>
+            </div>
+            <x-form.input name="verification_code" type="text" label="邮箱验证码"
+                placeholder="请输入 6 位验证码" required wire:model="verification_code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" divClass="col-span-2" />
+        @else
+            <x-form.input name="email" type="email" :label="__('general.input.email')"
+                :placeholder="__('general.input.email_placeholder')" required wire:model="email" divClass="col-span-2" />
+        @endif
 
         <x-form.input name="password" type="password" :label="__('general.input.password')" :placeholder="__('general.input.password_placeholder')"
             wire:model="password" required />
         <x-form.input name="password_confirm" type="password" :label="__('general.input.password_confirmation')"
             :placeholder="__('general.input.password_confirmation_placeholder')" wire:model="password_confirmation" required />
 
-        <x-form.properties :custom_properties="$custom_properties" :properties="$properties" />
-    
         @if(config('settings.tos'))
             <x-form.checkbox wire:model="tos" name="tos" required>
                 {{ __('product.tos') }}

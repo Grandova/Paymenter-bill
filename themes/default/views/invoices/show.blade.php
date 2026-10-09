@@ -52,6 +52,10 @@
                     <div class="text-green-500 mt-6 text-lg text-center font-semibold">
                         {{ __('invoices.paid') }}
                     </div>
+                    @elseif ($invoice->status == 'cancelled')
+                    <div class="text-muted mt-6 text-lg text-center font-semibold">
+                        账单已取消
+                    </div>
                     @elseif ($invoice->status == 'pending')
                     @if($checkPayment || $invoice->transactions->where('status', \App\Enums\InvoiceTransactionStatus::Processing)->where('created_at', '>=', now()->subDays(1))->count() > 0)
                     <div class="text-yellow-500 mb-6 text-lg text-center flex items-center justify-center">
@@ -72,6 +76,9 @@
                         <span wire:loading wire:target="pay">{{ __('Processing...') }}</span>
                         <span wire:loading.remove wire:target="pay">{{ __('Pay') }}</span>
                     </x-button.primary>
+                    @if(!$invoice->transactions->contains(fn ($transaction) => in_array($transaction->status, [\App\Enums\InvoiceTransactionStatus::Processing, \App\Enums\InvoiceTransactionStatus::Succeeded], true)))
+                    <x-button.danger type="button" wire:click="cancelInvoice" wire:confirm="确定取消这张未付款账单吗？" wire:loading.attr="disabled" class="mt-3">取消未付款账单</x-button.danger>
+                    @endif
                     @endif
                     @endif
                 </div>

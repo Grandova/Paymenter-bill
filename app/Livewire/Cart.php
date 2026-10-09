@@ -103,7 +103,7 @@ class Cart extends Component
         if (!Auth::check()) {
             return redirect()->guest('login');
         }
-        if (config('settings.mail_must_verify') && !Auth::user()->hasVerifiedEmail()) {
+        if ((config('settings.mail_must_verify') || config('settings.mail_verify_on_register')) && !Auth::user()->hasVerifiedEmail()) {
             return redirect()->route('verification.notice');
         }
         if (config('settings.tos') && !$this->tos) {

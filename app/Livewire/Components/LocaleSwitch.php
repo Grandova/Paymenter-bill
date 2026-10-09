@@ -17,8 +17,9 @@ class LocaleSwitch extends Component
     public function mount()
     {
         $this->currentLocale = session('locale', config('app.locale'));
-        $this->currentCurrency = session('currency', config('settings.default_currency'));
-        $this->currencies = Currency::all()->map(fn ($currency) => [
+        $this->currentCurrency = 'CNY';
+        session(['currency' => 'CNY']);
+        $this->currencies = Currency::where('code', 'CNY')->get()->map(fn ($currency) => [
             'value' => $currency->code,
             'label' => __($currency->name),
         ])->values()->toArray();
@@ -31,7 +32,7 @@ class LocaleSwitch extends Component
     public function updatedCurrentCurrency($currency)
     {
         $this->validate([
-            'currentCurrency' => 'required|exists:currencies,code',
+            'currentCurrency' => 'required|in:CNY',
         ]);
         if (Cart::items()->count() > 0) {
             $this->notify(__('You cannot change the currency while there are items in the cart.'), 'error');

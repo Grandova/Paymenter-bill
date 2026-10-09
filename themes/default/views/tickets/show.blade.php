@@ -126,7 +126,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <input id="attachments" type="file" multiple name="attachments[]" class="sr-only"
+                            <input id="attachments" type="file" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.log,.csv,.doc,.docx,.xls,.xlsx" multiple name="attachments[]" class="sr-only"
                                 wire:model.live="attachments" x-ref="fileInput"
                                 @change="selectedFiles = Array.from($event.target.files)" />
                         </div>

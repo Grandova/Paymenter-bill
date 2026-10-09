@@ -161,6 +161,7 @@ class Manage extends Component
         $this->checkAccess();
 
         return view('clicd::manage', ['canManage' => !$this->admin || auth()->user()->hasPermission('admin.services.update'),
-            'natAddress' => $this->service->product->settings->firstWhere('key', 'nat_public_ip')?->value]);
+            'natAddress' => $this->service->product->settings->firstWhere('key', 'nat_public_ip')?->value,
+            'monthlyTraffic' => (int) ($this->service->product->settings->firstWhere('key', 'monthly_traffic_gb')?->value ?? 0)]);
     }
 }

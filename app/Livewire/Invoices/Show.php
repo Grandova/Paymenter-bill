@@ -199,6 +199,33 @@ class Show extends Component
         $this->redirect(route('invoices.show', $this->invoice), true);
     }
 
+    public function cancelInvoice(): void
+    {
+        DB::transaction(function () {
+            $invoice = Invoice::whereKey($this->invoice->id)->lockForUpdate()->firstOrFail();
+            abort_unless($invoice->user_id === Auth::id(), 403);
+
+            if ($invoice->status !== Invoice::STATUS_PENDING || $invoice->transactions()->whereIn('status', [
+                InvoiceTransactionStatus::Processing->value,
+                InvoiceTransactionStatus::Succeeded->value,
+            ])->exists()) {
+                $this->notify('这张账单当前无法取消。', 'error');
+
+                return;
+            }
+
+            $invoice->update([
+                'status' => Invoice::STATUS_CANCELLED,
+                'cancellation_reason' => '客户取消未付款账单',
+            ]);
+            $this->checkPayment = false;
+            $this->lastChecked = null;
+            $this->showPayModal = false;
+            $this->invoice = $invoice->fresh()->load('transactions', 'transactions.gateway', 'transactions.invoice', 'adjustmentNotes');
+            $this->notify('未付款账单已取消。', 'success');
+        });
+    }
+
     public function checkPaymentStatus()
     {
         $this->invoice->refresh();

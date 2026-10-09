@@ -84,13 +84,6 @@ return [
                 'delete' => 'Delete Service Cancellations',
                 'deleteAny' => 'Bulk Delete Service Cancellations',
             ],
-            'custom_properties' => [
-                'create' => 'Create Custom Properties',
-                'update' => 'Update Custom Properties',
-                'viewAny' => 'View Custom Properties',
-                'delete' => 'Delete Custom Properties',
-                'deleteAny' => 'Bulk Delete Custom Properties',
-            ],
             'currencies' => [
                 'create' => 'Create Currencies',
                 'update' => 'Update Currencies',
@@ -263,7 +256,7 @@ return [
                 'view' => 'View Categories',
             ],
             'properties' => [
-                'view' => 'View Custom Properties',
+                'view' => 'View Service Properties',
             ],
             'roles' => [
                 'view' => 'View Roles',

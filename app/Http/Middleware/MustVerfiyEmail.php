@@ -15,7 +15,7 @@ class MustVerfiyEmail
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (config('settings.mail_must_verify') && $request->user() && !$request->user()->hasVerifiedEmail()) {
+        if ((config('settings.mail_must_verify') || config('settings.mail_verify_on_register')) && $request->user() && !$request->user()->hasVerifiedEmail()) {
             return redirect()->route('verification.notice');
         }
 

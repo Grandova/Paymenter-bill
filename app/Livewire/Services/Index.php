@@ -30,7 +30,7 @@ class Index extends Component
 
     public function render()
     {
-        $query = Auth::user()->services()->with(['product.category', 'product.server', 'properties', 'plan', 'currency'])->orderBy('created_at', 'desc');
+        $query = Auth::user()->services()->with(['product.category', 'product.server', 'product.settings', 'properties', 'plan', 'currency'])->orderBy('created_at', 'desc');
 
         if ($this->status) {
             $query->where('status', $this->status);

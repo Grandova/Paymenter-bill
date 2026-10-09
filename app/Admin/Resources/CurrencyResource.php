@@ -2,12 +2,9 @@
 
 namespace App\Admin\Resources;
 
-use App\Admin\Resources\CurrencyResource\Pages\CreateCurrency;
 use App\Admin\Resources\CurrencyResource\Pages\EditCurrency;
 use App\Admin\Resources\CurrencyResource\Pages\ListCurrencies;
 use App\Models\Currency;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -15,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class CurrencyResource extends Resource
 {
@@ -32,6 +30,11 @@ class CurrencyResource extends Resource
     public static function getNavigationGroup(): ?string
     {
         return __('Finance');
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->where('code', 'CNY');
     }
 
     public static function form(Schema $schema): Schema
@@ -93,11 +96,6 @@ class CurrencyResource extends Resource
             ])
             ->recordActions([
                 EditAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ]);
     }
 
@@ -112,7 +110,6 @@ class CurrencyResource extends Resource
     {
         return [
             'index' => ListCurrencies::route('/'),
-            'create' => CreateCurrency::route('/create'),
             'edit' => EditCurrency::route('/{record}/edit'),
         ];
     }

@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Helpers\ExtensionHelper;
+use App\Jobs\Server\SuspendJob;
+use App\Jobs\Server\TerminateJob;
 use App\Models\Role;
 use App\Models\Server;
 use App\Models\Service;
@@ -187,6 +189,33 @@ class ClicdTest extends TestCase
         (new SyncExpiry($service))->handle();
         Http::assertSent(fn ($request) => $request->method() === 'PUT' && Carbon::parse($request['expires_at'])->isPast());
         Http::assertSentCount(1);
+    }
+
+    public function test_expired_clicd_services_are_suspended_and_deleted_after_three_days(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-10 00:00:00'));
+        $service = $this->service();
+        Queue::fake();
+        $service->update(['expires_at' => '2026-10-07']);
+
+        $this->artisan('app:cron-job')->assertExitCode(0);
+
+        $this->assertSame(Service::STATUS_SUSPENDED, $service->refresh()->status);
+        Queue::assertPushed(SuspendJob::class, fn ($job) => $job->service->is($service));
+        Queue::assertNotPushed(TerminateJob::class);
+
+        $this->travelTo(Carbon::parse('2026-10-11 00:00:00'));
+        $this->artisan('app:cron-job')->assertExitCode(0);
+
+        $this->assertSame(Service::STATUS_SUSPENDED, $service->refresh()->status);
+        Queue::assertPushed(TerminateJob::class, fn ($job) => $job->service->is($service));
+
+        Http::fake([
+            'clicd.test/api/v1/containers/instance-uuid/*' => Http::response(['success' => true, 'data' => ['task_id' => 'delete-1']], 202),
+            'clicd.test/api/v1/tasks' => Http::response(['success' => true, 'data' => [['id' => 'delete-1', 'status' => 'done']]]),
+        ]);
+        (new TerminateJob($service))->handle();
+        $this->assertSame(Service::STATUS_CANCELLED, $service->refresh()->status);
     }
 
     public function test_provisioning_uses_typed_product_configuration_and_records_the_real_uuid(): void

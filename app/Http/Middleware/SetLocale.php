@@ -11,6 +11,7 @@ class SetLocale
     public function handle(Request $request, Closure $next)
     {
         App::setLocale(session('locale', config('app.locale')));
+        session(['currency' => 'CNY']);
 
         return $next($request);
     }

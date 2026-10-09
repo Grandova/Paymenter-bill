@@ -4,19 +4,21 @@ namespace Tests\Feature\Invoices;
 
 use App\Enums\InvoiceTransactionStatus;
 use App\Helpers\ExtensionHelper;
+use App\Livewire\Invoices\Show;
 use App\Models\Invoice;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class InvoicePaymentProcessingTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function createInvoiceWithItem($total = 100.00)
+    private function createInvoiceWithItem($total = 100.00, ?User $user = null)
     {
-        $user = User::factory()->create();
+        $user ??= User::factory()->create();
         $invoice = Invoice::factory()->create(['user_id' => $user->id, 'status' => 'pending']);
 
         $invoice->items()->create([
@@ -43,6 +45,54 @@ class InvoicePaymentProcessingTest extends TestCase
 
         $this->assertEquals('draft', $invoice->status);
         $this->assertGreaterThan(0, $invoice->total);
+    }
+
+    public function test_customer_can_cancel_an_unpaid_invoice(): void
+    {
+        $user = User::factory()->create();
+        $invoice = $this->createInvoiceWithItem(user: $user);
+
+        $this->actingAs($user);
+        Livewire::test(Show::class, ['invoice' => $invoice])
+            ->call('cancelInvoice');
+
+        $this->assertDatabaseHas('invoices', [
+            'id' => $invoice->id,
+            'status' => Invoice::STATUS_CANCELLED,
+            'cancellation_reason' => '客户取消未付款账单',
+        ]);
+    }
+
+    public function test_invoice_with_a_processing_payment_cannot_be_cancelled(): void
+    {
+        $user = User::factory()->create();
+        $invoice = $this->createInvoiceWithItem(user: $user);
+        $invoice->transactions()->create([
+            'amount' => 100.00,
+            'status' => InvoiceTransactionStatus::Processing,
+        ]);
+
+        $this->actingAs($user);
+        Livewire::test(Show::class, ['invoice' => $invoice])
+            ->call('cancelInvoice');
+
+        $this->assertSame(Invoice::STATUS_PENDING, $invoice->fresh()->status);
+    }
+
+    public function test_partially_paid_invoice_cannot_be_cancelled(): void
+    {
+        $user = User::factory()->create();
+        $invoice = $this->createInvoiceWithItem(user: $user);
+        $invoice->transactions()->create([
+            'amount' => 25.00,
+            'status' => InvoiceTransactionStatus::Succeeded,
+        ]);
+
+        $this->actingAs($user);
+        Livewire::test(Show::class, ['invoice' => $invoice])
+            ->call('cancelInvoice');
+
+        $this->assertSame(Invoice::STATUS_PENDING, $invoice->fresh()->status);
     }
 
     public function test_pending_invoice_is_snapshotted_when_created()

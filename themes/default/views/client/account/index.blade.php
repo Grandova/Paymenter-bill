@@ -12,7 +12,6 @@
             <x-form.input name="email" type="email" :label="__('general.input.email')"
                 :placeholder="__('general.input.email_placeholder')" required wire:model="email" dirty />
 
-            <x-form.properties :custom_properties="$custom_properties" :properties="$properties" dirty />
         </div>
 
 

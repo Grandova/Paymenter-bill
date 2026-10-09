@@ -3,11 +3,11 @@
 namespace App\Livewire\Client;
 
 use App\Helpers\NotificationHelper;
-use App\Livewire\ComponentWithProperties;
+use App\Livewire\Component;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
-class Account extends ComponentWithProperties
+class Account extends Component
 {
     public string $first_name = '';
 
@@ -22,22 +22,15 @@ class Account extends ComponentWithProperties
         $this->first_name = $user->first_name;
         $this->last_name = $user->last_name;
         $this->email = $user->email;
-
-        $this->initializeProperties($user, $user::class);
     }
 
     public function rules()
     {
-        return array_merge([
+        return [
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . Auth::id(),
-        ], $this->getRulesForProperties());
-    }
-
-    public function validationAttributes()
-    {
-        return $this->getAttributesForProperties();
+        ];
     }
 
     public function submit()
@@ -53,10 +46,6 @@ class Account extends ComponentWithProperties
             $user->email_verified_at = null;
             $user->save();
             NotificationHelper::emailVerificationNotification($user);
-        }
-
-        if (array_key_exists('properties', $validatedData)) {
-            $this->updateProperties($user, $validatedData['properties']);
         }
 
         $this->notify(__('Account updated successfully.'));

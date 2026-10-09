@@ -64,7 +64,8 @@ class CheckoutParameterMiddleware
      */
     private function shouldBlockCurrencyChange(string $currencyCode): bool
     {
-        return Cart::items()->count() > 0 ||
+        return $currencyCode !== 'CNY' ||
+            Cart::items()->count() > 0 ||
             Currency::where('code', $currencyCode)->doesntExist();
     }
 }

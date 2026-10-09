@@ -40,6 +40,11 @@ class TerminateJob implements ShouldQueue
             }
         }
 
+        if ($this->service->product->server?->extension === 'Clicd') {
+            $this->service->update(['status' => Service::STATUS_CANCELLED]);
+            $this->service->invoices()->where('status', 'pending')->update(['status' => 'cancelled']);
+        }
+
         if ($this->sendNotification) {
             NotificationHelper::serverTerminatedNotification($this->service->user, $this->service, is_array($data) ? $data : []);
         }

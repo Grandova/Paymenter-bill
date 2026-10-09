@@ -4,7 +4,6 @@ namespace App\Classes;
 
 use App\Admin\Actions\ResetColorsAction;
 use App\Admin\Actions\SendTestEmailAction;
-use App\Models\Currency;
 use App\Models\Setting;
 use App\Models\TaxRate;
 use App\Models\User;
@@ -21,14 +20,7 @@ class Settings
 {
     public static function settings()
     {
-        try {
-            // Only code is needed
-            $currencies = once(function () {
-                return Currency::pluck('code')->toArray();
-            });
-        } catch (Exception $e) {
-            $currencies = [];
-        }
+        $currencies = ['CNY'];
         $settings = [
             // Split settings into groups (only used in the settings page for organization)
             'general' => [
@@ -279,6 +271,14 @@ class Settings
                 [
                     'name' => 'mail_must_verify',
                     'label' => __('Users must verify email before buying'),
+                    'type' => 'checkbox',
+                    'database_type' => 'boolean',
+                    'default' => false,
+                ],
+                [
+                    'name' => 'mail_verify_on_register',
+                    'label' => '注册时要求邮箱验证码',
+                    'description' => '开启后，用户需先验证邮箱验证码才能完成注册。',
                     'type' => 'checkbox',
                     'database_type' => 'boolean',
                     'default' => false,

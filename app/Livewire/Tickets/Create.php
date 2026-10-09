@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Validate;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
 
 #[DisabledIf('tickets_disabled')]
@@ -17,6 +18,7 @@ class Create extends Component
 {
     use WithFileUploads;
 
+    #[Validate(['attachments.*' => 'file|max:10240|extensions:jpg,jpeg,png,gif,webp,pdf,txt,log,csv,doc,docx,xls,xlsx|mimes:jpg,jpeg,png,gif,webp,pdf,txt,log,csv,doc,docx,xls,xlsx'])]
     public array $attachments = [];
 
     public string $message;
@@ -38,7 +40,7 @@ class Create extends Component
             'subject' => 'required|string',
             'message' => 'required|string',
             'priority' => 'required|in:low,medium,high',
-            'attachments.*' => 'file|max:10240',
+            'attachments.*' => 'file|max:10240|extensions:jpg,jpeg,png,gif,webp,pdf,txt,log,csv,doc,docx,xls,xlsx|mimes:jpg,jpeg,png,gif,webp,pdf,txt,log,csv,doc,docx,xls,xlsx',
         ]);
 
         $rateLimitKey = 'create-ticket:' . Auth::id();

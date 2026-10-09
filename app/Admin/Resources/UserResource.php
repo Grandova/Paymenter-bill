@@ -2,7 +2,6 @@
 
 namespace App\Admin\Resources;
 
-use App\Admin\Resources\Common\RelationManagers\PropertiesRelationManager;
 use App\Admin\Resources\UserResource\Pages\CreateUser;
 use App\Admin\Resources\UserResource\Pages\EditUser;
 use App\Admin\Resources\UserResource\Pages\ListUsers;
@@ -135,13 +134,6 @@ class UserResource extends Resource
                 EditAction::make(),
             ])
             ->defaultSort('created_at', 'desc');
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            PropertiesRelationManager::class,
-        ];
     }
 
     public static function getPages(): array

@@ -148,8 +148,7 @@ class Install extends Command
         $this->laravel->make('cache')->forgetDriver('redis');
         app()->setLocale('zh');
 
-        if ($this->call('migrate', ['--force' => true, '--seed' => true]) !== self::SUCCESS
-            || $this->call('db:seed', ['--class' => 'CustomPropertySeeder', '--force' => true]) !== self::SUCCESS) {
+        if ($this->call('migrate', ['--force' => true, '--seed' => true]) !== self::SUCCESS) {
             $this->error('安装中断，已保留 .env 和数据库。请按 docs/installation-zh.md 恢复，不要重新生成 APP_KEY。');
 
             return self::FAILURE;

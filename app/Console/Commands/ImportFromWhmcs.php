@@ -4,11 +4,9 @@ namespace App\Console\Commands;
 
 use App\Models\Category;
 use App\Models\ConfigOption;
-use App\Models\CustomProperty;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\Setting;
-use App\Models\User;
 use App\Providers\SettingsProvider;
 use Closure;
 use DB;
@@ -106,7 +104,6 @@ class ImportFromWhmcs extends Command
         $this->call('migrate:fresh', ['--force' => true]);
         // Seed default data
         $this->call('db:seed', ['--force' => true]);
-        $this->call('db:seed', ['--class' => 'CustomPropertySeeder', '--force' => true]);
     }
 
     protected function askOrUseENV(string $argument, string $env, string $question, string $placeholder): string
@@ -243,11 +240,8 @@ class ImportFromWhmcs extends Command
     private function importUsers()
     {
         $this->info('Importing users... (' . $this->count('tblclients') . ' records)');
-        $customProperties = CustomProperty::where('model', User::class)->get()->keyBy('key');
-
-        $this->migrateInBatch('tblclients', 'SELECT * FROM tblclients LIMIT :limit OFFSET :offset', function ($records) use ($customProperties) {
+        $this->migrateInBatch('tblclients', 'SELECT * FROM tblclients LIMIT :limit OFFSET :offset', function ($records) {
             $data = [];
-            $properties = [];
             $credits = [];
 
             foreach ($records as $record) {
@@ -271,30 +265,6 @@ class ImportFromWhmcs extends Command
                     'created_at' => $record['created_at'] == '0000-00-00 00:00:00' ? now() : $record['created_at'],
                 ];
 
-                // Custom properties
-                foreach ($customProperties as $key => $property) {
-                    // address1 -> address, companyname -> company_name
-                    $whmcsKey = match ($key) {
-                        'address' => 'address1',
-                        'company_name' => 'companyname',
-                        'postcode' => 'zip',
-                        'phonenumber' => 'phone',
-                        default => $key,
-                    };
-                    if (isset($record[$key]) && $record[$key] !== '') {
-                        array_push($properties, [
-                            'key' => $key,
-                            'value' => $record[$whmcsKey],
-                            'model_id' => $record['id'],
-                            'model_type' => User::class,
-                            'name' => $property->name,
-                            'custom_property_id' => $property->id,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                }
-
                 // Credits
                 if ($record['credit'] > 0) {
                     $currency = $this->pdo->prepare('SELECT * FROM tblcurrencies WHERE id = :id LIMIT 1');
@@ -312,9 +282,6 @@ class ImportFromWhmcs extends Command
             }
 
             DB::table('users')->insert($data);
-            if (count($properties) > 0) {
-                DB::table('properties')->insert($properties);
-            }
             if (count($credits) > 0) {
                 DB::table('credits')->insert($credits);
             }

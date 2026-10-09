@@ -61,9 +61,6 @@
             </main>
             <x-notification />
             <x-confirmation />
-            <div class="flex">
-                <x-navigation.footer />
-            </div>
         </div>
         <x-impersonating />
     </div>

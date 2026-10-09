@@ -596,7 +596,7 @@ color utility to any element that depends on these defaults.
 }
 .client-content {
     width: min(100%, 1440px);
-    margin: 0 auto;
+    margin: 3.75rem auto 0;
     padding: 1.5rem 1.5rem 3rem;
 }
 .client-area .container {
@@ -630,6 +630,10 @@ color utility to any element that depends on these defaults.
 .client-area .service-table {
     border-collapse: collapse;
 }
+.client-area .service-table-wrap {
+    border: 1px solid hsl(var(--color-neutral) / .65);
+    border-radius: .4rem;
+}
 .client-area .service-table th {
     padding: .8rem 1rem;
     font-size: .8rem;
@@ -637,6 +641,9 @@ color utility to any element that depends on these defaults.
 }
 .client-area .service-table td {
     padding: .85rem 1rem;
+}
+.client-area .service-table tbody tr:hover {
+    background: hsl(var(--color-background) / .55);
 }
 .client-area .service-status-active {
     color: #178148;
@@ -648,24 +655,6 @@ color utility to any element that depends on these defaults.
 .client-area .client-nav-link.is-active {
     color: #c51e3a;
     background: #fce9ed;
-}
-.client-area .client-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    align-items: center;
-    width: 100%;
-    min-height: 3.75rem;
-    padding: .75rem 1.5rem;
-    color: #d1d5db;
-    font-size: .8125rem;
-    background: #202124;
-}
-.client-footer a {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    color: #fff;
 }
 .client-area .catalog-tabs [aria-current] {
     background: #cf2843;
@@ -711,6 +700,7 @@ color utility to any element that depends on these defaults.
         gap: .35rem;
     }
     .client-area .client-content {
+        margin-top: 3.5rem;
         padding: 1rem .75rem 2rem;
     }
     .client-area .client-panel {
@@ -719,9 +709,6 @@ color utility to any element that depends on these defaults.
     .client-area .client-stat {
         min-height: 5.5rem;
         padding: .85rem;
-    }
-    .client-area .client-footer {
-        padding-inline: .75rem;
     }
 }
 @media (max-width: 767px) {

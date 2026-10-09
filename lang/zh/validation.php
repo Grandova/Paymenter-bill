@@ -206,14 +206,6 @@ return [
         'attachments.*' => '附件',
         'coupon' => '优惠码',
         'tos' => '服务条款',
-        'properties.phone' => '电话',
-        'properties.country' => '国家/地区',
-        'properties.address' => '地址',
-        'properties.address2' => '详细地址',
-        'properties.city' => '城市',
-        'properties.state' => '省/州',
-        'properties.zip' => '邮政编码',
-        'properties.company_name' => '公司名称',
     ],
 
 ];

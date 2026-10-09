@@ -21,7 +21,7 @@
                 <span class="vm-status {{ $status === 'running' ? 'is-running' : '' }}">{{ $states[$status] ?? ($status ?: '等待同步') }}</span>
                 <button type="button" wire:click="refreshInstance" wire:loading.attr="disabled"><x-ri-refresh-line />同步状态</button>
                 @if($canManage && $instance)
-                <button type="button" class="vm-primary" :disabled="busy" @click="busy = true; try { access = await $wire.console(); copied = false } finally { busy = false }"><x-ri-external-link-line />打开控制台</button>
+                <button type="button" class="vm-primary" :disabled="busy" @click="const loginWindow = window.open('about:blank', '_blank'); busy = true; try { if (!access) access = await $wire.console(); copied = false; if (loginWindow && access?.url) { loginWindow.opener = null; loginWindow.location.href = access.url } else if (loginWindow) loginWindow.close() } finally { busy = false }"><x-ri-external-link-line />打开控制台</button>
                 @endif
             </div>
         </header>
@@ -44,10 +44,18 @@
     <template x-if="access">
         <section class="vm-panel vm-console-credentials">
             <div class="vm-access-heading">
-                <div><h3>控制台登录信息</h3><p>访问码已包含在控制台入口中，请妥善保管登录密码。</p></div>
-                <button type="button" class="vm-access-close" @click="access = null" aria-label="收起"><x-ri-close-line /></button>
+                <div><h3>控制台登录信息</h3><p>登录地址包含访问码，请勿分享。</p></div>
             </div>
-            <label>登录密码<input type="text" readonly :value="access.password" @click="$el.select()" autocomplete="off" /></label>
+            <label>控制台登录地址
+                <div class="vm-secret-field">
+                    <input type="text" readonly :value="access.url" @click="$el.select()" autocomplete="off" />
+                </div>
+            </label>
+            <label>登录密码
+                <div class="vm-secret-field">
+                    <input type="text" readonly :value="access.password" @click="$el.select()" autocomplete="off" />
+                </div>
+            </label>
             <div class="vm-actions">
                 <button type="button" @click="await navigator.clipboard.writeText(access.password); copied = true" x-text="copied ? '密码已复制' : '复制密码'"></button>
                 <a class="vm-primary" :href="access.url" target="_blank" rel="noopener noreferrer">继续前往控制台 <x-ri-arrow-right-up-line /></a>
@@ -59,30 +67,53 @@
     @if(!$instance)
         <div class="vm-empty"><x-ri-server-line /><h3>等待实例信息</h3><p>开通完成后，这里将显示服务器配置和管理选项。</p></div>
     @else
+        @php
+            $cpuUsage = isset($usage['cpu_usage_pct']) ? (float) $usage['cpu_usage_pct'] : null;
+            $memoryBytes = $usage['memory_usage_bytes'] ?? null;
+            $diskBytes = $usage['disk_usage_bytes'] ?? null;
+            $trafficBytes = isset($traffic['rx_used_bytes'], $traffic['tx_used_bytes']) ? $traffic['rx_used_bytes'] + $traffic['tx_used_bytes'] : null;
+            $memoryUsage = $memoryBytes !== null ? $memoryBytes / max(1, $instance['ram_mb'] * 1048576) * 100 : null;
+            $diskUsage = $diskBytes !== null ? $diskBytes / max(1, $instance['disk_gb'] * 1073741824) * 100 : null;
+            $trafficUsage = $trafficBytes !== null && $monthlyTraffic > 0 ? $trafficBytes / ($monthlyTraffic * 1073741824) * 100 : null;
+            $trafficValue = $trafficBytes !== null ? round($trafficBytes / 1073741824, 2).' GB' : '—';
+        @endphp
         <div class="vm-stats">
             @foreach([
-                ['处理器', isset($usage['cpu_usage_pct']) ? round($usage['cpu_usage_pct'], 1).'%' : '—', $instance['vcpu'].' 核', $usage['cpu_usage_pct'] ?? 0],
-                ['内存', isset($usage['memory_usage_bytes']) ? round($usage['memory_usage_bytes'] / 1048576).' MB' : '—', $instance['ram_mb'].' MB', isset($usage['memory_usage_bytes']) ? $usage['memory_usage_bytes'] / max(1, $instance['ram_mb'] * 1048576) * 100 : 0],
-                ['存储', isset($usage['disk_usage_bytes']) ? round($usage['disk_usage_bytes'] / 1073741824, 2).' GB' : $instance['disk_gb'].' GB', '磁盘容量', isset($usage['disk_usage_bytes']) ? $usage['disk_usage_bytes'] / max(1, $instance['disk_gb'] * 1073741824) * 100 : 0],
-                ['流量', isset($traffic['rx_used_bytes'], $traffic['tx_used_bytes']) ? round(($traffic['rx_used_bytes'] + $traffic['tx_used_bytes']) / 1073741824, 2).' GB' : '—', '上传与下载', null],
-            ] as [$label, $value, $limit, $percent])
+                ['CPU 使用率', 'cpu', $cpuUsage !== null ? round($cpuUsage, 1).'%' : '—', $cpuUsage !== null ? round($cpuUsage, 1).'% / 100%' : '— / 100%', $cpuUsage],
+                ['内存使用', 'ram', $memoryUsage !== null ? round($memoryUsage, 1).'%' : '—', ($memoryBytes !== null ? round($memoryBytes / 1048576).' MB' : '—').' / '.$instance['ram_mb'].' MB', $memoryUsage],
+                ['磁盘使用', 'disk', $diskUsage !== null ? round($diskUsage, 1).'%' : '—', ($diskBytes !== null ? round($diskBytes / 1073741824, 2).' GB' : '—').' / '.$instance['disk_gb'].' GB', $diskUsage],
+                ['流量使用', 'traffic', $trafficUsage !== null ? round($trafficUsage, 1).'%' : ($monthlyTraffic === 0 ? '不限' : '—'), $trafficValue.' / '.($monthlyTraffic > 0 ? $monthlyTraffic.' GB' : '不限'), $trafficUsage],
+            ] as [$label, $icon, $badge, $value, $percent])
             <div class="vm-stat">
-                <span>{{ $label }}</span><strong>{{ $value }}</strong><small>{{ $limit }}</small>
-                @if($percent !== null)<div class="vm-meter"><i style="width: {{ min(100, max(0, $percent)) }}%"></i></div>@endif
+                <div class="vm-stat-heading">
+                    <span class="vm-stat-icon">
+                        @if($icon === 'cpu')<x-ri-cpu-line />
+                        @elseif($icon === 'ram')<x-ri-ram-line />
+                        @elseif($icon === 'disk')<x-ri-hard-drive-2-line />
+                        @else<x-ri-wifi-line />@endif
+                    </span>
+                    <span class="vm-stat-percent">{{ $badge }}</span>
+                </div>
+                <span class="vm-stat-title">{{ $label }}</span>
+                <div class="vm-meter"><i style="width: {{ min(100, max(0, $percent ?? 0)) }}%"></i></div>
+                <strong>{{ $value }}</strong>
             </div>
             @endforeach
         </div>
         <div class="vm-columns">
             <section class="vm-panel">
-                <h3>网络与系统</h3>
-                <dl>
-                    <div><dt>操作系统</dt><dd>{{ $instance['template'] }}</dd></div>
-                    <div><dt>公网 IPv4</dt><dd>{{ $publicAddress ?: '未分配' }}</dd></div>
-                    <div><dt>NAT 公网入口</dt><dd>{{ $natAddress ?: '未配置' }}</dd></div>
-                    <div><dt>IPv6</dt><dd>{{ $instance['ipv6'] ?: '未分配' }}</dd></div>
-                    <div><dt>内网地址</dt><dd>{{ data_get($instance, 'ip') ?: '未分配' }}</dd></div>
-                    <div>
-                        <dt>SSH 连接</dt>
+                <div class="vm-panel-heading">
+                    <span class="vm-panel-icon"><x-ri-global-line /></span>
+                    <div><h3>网络与系统</h3><p>系统配置和网络连接信息</p></div>
+                </div>
+                <dl class="vm-network-grid">
+                    <div><dt><x-ri-computer-line />操作系统</dt><dd>{{ $instance['template'] }}</dd></div>
+                    <div><dt><x-ri-global-line />公网 IPv4</dt><dd>{{ $publicAddress ?: '未分配' }}</dd></div>
+                    <div><dt><x-ri-share-forward-2-line />NAT 公网入口</dt><dd>{{ $natAddress ?: '未配置' }}</dd></div>
+                    <div><dt><x-ri-global-line />IPv6</dt><dd>{{ $instance['ipv6'] ?: '未分配' }}</dd></div>
+                    <div><dt><x-ri-router-line />内网地址</dt><dd>{{ data_get($instance, 'ip') ?: '未分配' }}</dd></div>
+                    <div class="vm-network-wide">
+                        <dt><x-ri-terminal-box-line />SSH 连接</dt>
                         <dd class="vm-connection">
                             {{ $sshHost && $instance['ssh_port'] ? $sshHost.':'.$instance['ssh_port'] : '暂不可用' }}
                             @if($sshHost && $instance['ssh_port'])
@@ -90,18 +121,20 @@
                             @endif
                         </dd>
                     </div>
-                    <div><dt>带宽</dt><dd>下载 {{ $instance['network_down_mbps'] ?? '—' }} / 上传 {{ $instance['network_up_mbps'] ?? '—' }} Mbps</dd></div>
+                    <div class="vm-network-wide"><dt><x-ri-speed-up-line />带宽</dt><dd>下载 {{ $instance['network_down_mbps'] ?? '—' }} / 上传 {{ $instance['network_up_mbps'] ?? '—' }} Mbps</dd></div>
                 </dl>
             </section>
             <section class="vm-panel">
-                <h3>服务与账单</h3>
+                <div class="vm-panel-heading">
+                    <span class="vm-panel-icon"><x-ri-bill-line /></span>
+                    <div><h3>服务与账单</h3><p>套餐信息、服务状态和续费时间</p></div>
+                </div>
                 <dl>
-                    <div><dt>套餐</dt><dd>{{ $service->plan->name }}</dd></div>
-                    <div><dt>续费价格</dt><dd>{{ $service->formattedPrice }}</dd></div>
-                    <div><dt>服务状态</dt><dd>{{ __('services.statuses.'.$service->status) }}</dd></div>
-                    <div><dt>下次付款</dt><dd>{{ $service->expires_at?->translatedFormat(__('general.date_format')) ?? '长期有效' }}</dd></div>
+                    <div><dt><x-ri-box-3-line />套餐</dt><dd>{{ $service->plan->name }}</dd></div>
+                    <div><dt><x-ri-wallet-3-line />续费价格</dt><dd class="vm-billing-price">{{ $service->formattedPrice }}</dd></div>
+                    <div><dt><x-ri-checkbox-circle-line />服务状态</dt><dd><span class="vm-service-status {{ $service->status === 'active' ? 'is-active' : '' }}">{{ __('services.statuses.'.$service->status) }}</span></dd></div>
+                    <div><dt><x-ri-calendar-line />下次付款</dt><dd>{{ $service->expires_at?->translatedFormat(__('general.date_format')) ?? '长期有效' }}</dd></div>
                 </dl>
-                <div class="vm-console-access"><p>其他实例管理操作可在服务器控制台中进行。</p></div>
             </section>
         </div>
     @endif

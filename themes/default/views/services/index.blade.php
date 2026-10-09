@@ -13,7 +13,7 @@
                 @endforeach
             </x-form.select>
         </div>
-        <div class="overflow-x-auto">
+        <div class="service-table-wrap overflow-x-auto">
             <table class="service-table">
                 <thead>
                     <tr>
@@ -30,8 +30,8 @@
                         <td>
                             <a href="{{ route('services.show', $service) }}" wire:navigate class="font-semibold hover:underline">{{ $service->label }}</a>
                             <p class="text-muted mt-1">{{ $service->product->category->name }}</p>
-                            @if($service->product->server?->extension === 'Clicd')
-                            <p class="text-muted mt-1 font-mono text-xs">{{ $service->properties->firstWhere('key', 'clicd_ip')?->value ?: $service->properties->firstWhere('key', 'clicd_ipv6')?->value }}</p>
+                            @if($service->product->server?->extension === 'Clicd' && $service->product->settings->firstWhere('key', 'region')?->value)
+                            <p class="text-muted mt-1 text-sm">地区：{{ $service->product->settings->firstWhere('key', 'region')->value }}</p>
                             @endif
                         </td>
                         <td>
