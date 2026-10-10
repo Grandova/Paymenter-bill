@@ -14,6 +14,16 @@ class AdminNavigationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_admin_loads_livewire_script_through_application_route(): void
+    {
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $admin = User::factory()->create(['role_id' => Role::where('name', 'admin')->first()->id]);
+        $this->actingAs($admin)->withSession($this->loginUser($admin));
+
+        $this->get('/admin')->assertOk()->assertSee('/paymenter/livewire-script?id=', false);
+        $this->get('/paymenter/livewire-script')->assertOk()->assertHeader('content-type', 'application/javascript; charset=utf-8');
+    }
+
     public function test_admin_navigation_groups_business_pages_and_links_to_existing_payment_transactions(): void
     {
         Filament::setCurrentPanel(Filament::getPanel('admin'));

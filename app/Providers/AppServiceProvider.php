@@ -135,6 +135,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Livewire::setScriptRoute(function ($handle) {
+            return Route::get('/paymenter/livewire-script', $handle);
+        });
+
         // Change livewire url
         Livewire::setUpdateRoute(function ($handle) {
             return Route::post('/paymenter/update', $handle)->middleware('web')->name('paymenter.');
