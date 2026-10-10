@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Admin\Widgets\Overview;
 use App\Admin\Widgets\Revenue;
+use App\Enums\DashboardPeriod;
 use App\Enums\InvoiceTransactionStatus;
 use App\Models\Currency;
 use App\Models\Invoice;
@@ -86,5 +87,45 @@ class AdminRevenueTest extends TestCase
         $stat = $overview->stats()[0];
         $this->assertSame(__('Revenue') . ' (CNY)', $stat->getLabel());
         $this->assertEquals(0, $stat->getValue());
+    }
+
+    public function test_overview_compares_net_revenue_with_previous_period(): void
+    {
+        $invoice = Invoice::factory()->create([
+            'user_id' => User::factory()->create()->id,
+            'status' => Invoice::STATUS_PAID,
+        ]);
+
+        $invoice->transactions()->create([
+            'amount' => 100,
+            'refunded_amount' => 20,
+            'status' => InvoiceTransactionStatus::Succeeded,
+            'is_credit_transaction' => false,
+            'credited_to_balance' => false,
+            'applied_to_invoice' => true,
+        ]);
+
+        $previous = $invoice->transactions()->create([
+            'amount' => 50,
+            'refunded_amount' => 10,
+            'status' => InvoiceTransactionStatus::Succeeded,
+            'is_credit_transaction' => false,
+            'credited_to_balance' => false,
+            'applied_to_invoice' => true,
+        ]);
+        $previous->created_at = DashboardPeriod::Month->start()->subDay();
+        $previous->save();
+
+        $overview = new class extends Overview
+        {
+            public function stats(): array
+            {
+                return $this->getStats();
+            }
+        };
+
+        $stat = $overview->stats()[0];
+        $this->assertEquals(80, $stat->getValue());
+        $this->assertStringContainsString('100.00%', $stat->getDescription());
     }
 }

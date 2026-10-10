@@ -14,6 +14,7 @@ use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 
 class Overview extends BaseWidget
@@ -50,7 +51,7 @@ class Overview extends BaseWidget
 
         $chart = $this->trend(Trend::query(clone $query))->sum('amount - refunded_amount - credited_amount');
 
-        $previous = $this->previousPeriod(clone $query)->sum('amount - refunded_amount - credited_amount');
+        $previous = $this->previousPeriod(clone $query)->sum(DB::raw('amount - refunded_amount - credited_amount'));
 
         return $this->stat(__('Revenue') . ' (' . $currency . ')', $chart, $previous);
     }
