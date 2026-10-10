@@ -184,7 +184,7 @@ location ^~ /default/assets/ {
 
 ```sh
 set -eu
-SITE=/www/wwwroot/bill.example.com
+SITE=/www/wwwroot/vmnet
 test -f "$SITE/artisan" && test -f "$SITE/.env"
 command -v rsync >/dev/null
 UPDATE_DIR=$(mktemp -d)
