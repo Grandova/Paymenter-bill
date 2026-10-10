@@ -180,14 +180,16 @@ location ^~ /default/assets/ {
 
 适用于只改动 PHP、模板或已打包前端资源的版本。先在面板备份数据库，并备份站点的 `.env`、`storage` 和自装插件；确认新版 `composer.lock`、`database/migrations` 及插件迁移没有变化。若依赖或迁移发生变化，请安排维护窗口，安装依赖并执行 `/www/server/php/83/bin/php artisan migrate --force`，不要按下面的在线步骤跳过迁移。
 
-首次安装使用的是源码压缩包，站点通常没有 `.git` 目录，因此无需执行 `git pull`。在面板终端或 SSH 中运行以下命令；将路径换成实际站点目录，先确认已安装 `rsync`：
+首次安装使用的是源码压缩包，站点通常没有 `.git` 目录，因此无需执行 `git pull`。在面板终端或 SSH 中运行以下命令。外层括号会在子 shell 中执行更新，即使下载或检查失败，也不会退出当前 SSH 会话：
 
 ```sh
+(
 set -eu
 SITE=/www/wwwroot/vmnet
-test -f "$SITE/artisan" && test -f "$SITE/.env"
-command -v rsync >/dev/null
+test -f "$SITE/artisan" && test -f "$SITE/.env" || { echo '站点目录或 .env 不存在，请检查 SITE 路径'; exit 1; }
+command -v rsync >/dev/null || { echo '未安装 rsync，请先在服务器安装'; exit 1; }
 UPDATE_DIR=$(mktemp -d)
+trap 'rm -r -- "$UPDATE_DIR"' EXIT
 curl -fL https://github.com/Grandova/Paymenter-bill/archive/refs/heads/main.tar.gz -o "$UPDATE_DIR/paymenter.tar.gz"
 mkdir "$UPDATE_DIR/release"
 tar -xzf "$UPDATE_DIR/paymenter.tar.gz" --strip-components=1 -C "$UPDATE_DIR/release"
@@ -201,9 +203,10 @@ cd "$SITE"
 /www/server/php/83/bin/php artisan optimize:clear
 /www/server/php/83/bin/php artisan view:cache
 /www/server/php/83/bin/php artisan queue:restart
+)
 ```
 
-随后在面板中重载网站所用的 PHP 8.3 服务，再刷新前台和后台。若刚修复后台空白页，可检查 `https://你的域名/paymenter/livewire-script`：应返回 **200**，并在窄屏确认左上角菜单能够展开。验证完成后可删除 `$UPDATE_DIR` 临时目录。
+命令若提前停止，查看终端最后一条错误信息再处理；不要反复重新安装或删除站点文件。随后在面板中重载网站所用的 PHP 8.3 服务，再刷新前台和后台。若刚修复后台空白页，可检查 `https://你的域名/paymenter/livewire-script`：应返回 **200**，并在窄屏确认左上角菜单能够展开。临时目录会在子 shell 退出时自动清理。
 
 此方式会逐个替换文件，不能保证严格零停机；涉及数据库结构、依赖或不兼容改动时，应进入维护模式更新。不要覆盖 `.env`、`storage`，也不要删除旧版 `public/default/assets`，以免正在打开的页面丢失资源。
 
