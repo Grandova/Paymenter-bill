@@ -7,6 +7,7 @@ use App\Admin\Resources\UserResource\Pages\EditUser;
 use App\Admin\Resources\UserResource\Pages\ListUsers;
 use App\Admin\Resources\UserResource\Pages\ShowBillingAgreements;
 use App\Admin\Resources\UserResource\Pages\ShowCredits;
+use App\Admin\Resources\UserResource\Pages\ShowCreditTransactions;
 use App\Admin\Resources\UserResource\Pages\ShowInvoices;
 use App\Admin\Resources\UserResource\Pages\ShowServices;
 use App\Admin\Resources\UserResource\Pages\ShowTickets;
@@ -24,11 +25,14 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Hash;
 
 class UserResource extends Resource
 {
+    protected static ?int $navigationSort = 10;
+
     protected static ?string $model = User::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-group-line';
@@ -42,7 +46,12 @@ class UserResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Customers and support');
+        return __('Customers and finance');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Customer management');
     }
 
     public static function getGloballySearchableAttributes(): array
@@ -53,6 +62,16 @@ class UserResource extends Resource
     public static function getGlobalSearchResultTitle(Model $record): string|Htmlable
     {
         return $record->name;
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with('credits')
+            ->withCount([
+                'services as active_services_count' => fn (Builder $query) => $query->where('status', 'active'),
+                'invoices as pending_invoices_count' => fn (Builder $query) => $query->where('status', 'pending'),
+            ]);
     }
 
     public static function form(Schema $schema): Schema
@@ -107,12 +126,26 @@ class UserResource extends Resource
                             return null;
                         }
 
-                        return __('Earnings - ') . implode(', ', $user->credits->map(function (Credit $credit) {
+                        return __('Balance: ') . implode(', ', $user->credits->map(function (Credit $credit) {
                             return "$credit->currency_code: $credit->amount";
                         })->toArray());
                     }),
                 TextColumn::make('last_name')->searchable()->sortable(),
                 TextColumn::make('email')->searchable()->sortable(),
+                TextColumn::make('active_services_count')
+                    ->label(__('Active Services'))
+                    ->numeric()
+                    ->sortable(),
+                TextColumn::make('pending_invoices_count')
+                    ->label(__('Pending Invoices'))
+                    ->badge()
+                    ->color(fn (int $state): string => $state > 0 ? 'warning' : 'gray')
+                    ->sortable(),
+                TextColumn::make('email_verified_at')
+                    ->label(__('Email Verification'))
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => $state ? __('Verified') : __('Unverified'))
+                    ->color(fn ($state): string => $state ? 'success' : 'warning'),
                 TextColumn::make('role.name')->formatStateUsing(fn ($state) => __($state))->sortable(),
                 TextColumn::make('created_at')->dateTime()->sortable(),
             ])
@@ -123,7 +156,8 @@ class UserResource extends Resource
                     ->searchable()
                     ->preload(),
                 Filter::make('email_verified')
-                    ->label(__('Email Verified')),
+                    ->label(__('Email Verified'))
+                    ->query(fn (Builder $query): Builder => $query->whereNotNull('email_verified_at')),
                 Filter::make('has_active_services')
                     ->label(__('Has Active Services'))
                     ->query(fn ($query) => $query->whereHas('services', function ($q) {
@@ -145,6 +179,7 @@ class UserResource extends Resource
             'services' => ShowServices::route('/{record}/services'),
             'invoices' => ShowInvoices::route('/{record}/invoices'),
             'credits' => ShowCredits::route('/{record}/credits'),
+            'credit-transactions' => ShowCreditTransactions::route('/{record}/credit-transactions'),
             'tickets' => ShowTickets::route('/{record}/tickets'),
             'billing-agreements' => ShowBillingAgreements::route('/{record}/billing-agreements'),
         ];
@@ -157,6 +192,7 @@ class UserResource extends Resource
             ShowServices::class,
             ShowInvoices::class,
             ShowCredits::class,
+            ShowCreditTransactions::class,
             ShowTickets::class,
             ShowBillingAgreements::class,
         ]);

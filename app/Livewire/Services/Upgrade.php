@@ -109,7 +109,7 @@ class Upgrade extends Component
             'upgradeProduct.id' => [
                 'required',
                 function ($attribute, $value, $fail) {
-                    $plan = $this->upgradeProduct->availablePlans()
+                    $plan = $this->upgradeProduct->availablePlans($this->service->currency_code)
                         ->where('billing_period', $this->service->plan->billing_period)
                         ->where('billing_unit', $this->service->plan->billing_unit)
                         ->first();
@@ -137,6 +137,8 @@ class Upgrade extends Component
 
     public function doUpgrade()
     {
+        $this->authorize('view', $this->service);
+
         if (!$this->service->upgradable) {
             $this->notify(__('This service is not upgradable.'), 'error', true);
 
@@ -149,15 +151,30 @@ class Upgrade extends Component
         try {
             $service = Service::where('id', $this->service->id)->lockForUpdate()->first();
 
-            // Validate upgradable again after locking the service
-            if ($service->upgrade()->where('status', ServiceUpgrade::STATUS_PENDING)->count() != 0) {
+            $validProduct = $this->upgradeProduct->id === $service->product_id
+                || $service->productUpgrades()->contains('id', $this->upgradeProduct->id);
+
+            if (!$service->upgradable || !$validProduct) {
                 DB::rollBack();
                 $this->notify(__('This service is not upgradable.'), 'error', true);
 
                 return $this->redirect(route('services.show', $this->service), true);
             }
 
-            $upgradePlan = $this->upgradeProduct->availablePlans()
+            $stockReserved = false;
+            if ($this->upgradeProduct->id !== $service->product_id) {
+                $upgradeProduct = Product::query()->whereKey($this->upgradeProduct->id)->lockForUpdate()->firstOrFail();
+                if ($upgradeProduct->stock !== null) {
+                    if ($upgradeProduct->stock < $service->quantity) {
+                        throw new DisplayException(__('product.out_of_stock', ['product' => $upgradeProduct->name]));
+                    }
+
+                    $upgradeProduct->decrement('stock', $service->quantity);
+                    $stockReserved = true;
+                }
+            }
+
+            $upgradePlan = $this->upgradeProduct->availablePlans($service->currency_code)
                 ->where('billing_period', $service->plan->billing_period)
                 ->where('billing_unit', $service->plan->billing_unit)
                 ->first();
@@ -181,6 +198,7 @@ class Upgrade extends Component
                 'service_id' => $service->id,
                 'product_id' => $this->upgradeProduct->id,
                 'plan_id' => $upgradePlan->id,
+                'stock_reserved' => $stockReserved,
             ]);
             $upgrade->save();
 
@@ -200,7 +218,7 @@ class Upgrade extends Component
             if ($price->price <= 0) {
                 (new ServiceUpgradeService)->handle($upgrade);
 
-                if (!config('settings.credits_on_downgrade', true)) {
+                if (!config('settings.credits_enabled') || !config('settings.credits_on_downgrade', true)) {
                     DB::commit();
                     $this->notify(__('The upgrade has been completed.'), 'success', true);
 
@@ -211,12 +229,13 @@ class Upgrade extends Component
                 $credit = $user->credits()->where('currency_code', $price->currency->code)->first();
 
                 if ($credit) {
-                    $credit->increment('amount', abs($price->price));
+                    $credit->amount = number_format(((int) round((float) $credit->amount * 100) + (int) round(abs($price->price) * 100)) / 100, 2, '.', '');
+                    $credit->recordAs('downgrade_credit', __('account.downgrade_credit'), $upgrade)->save();
                 } else {
-                    $user->credits()->create([
+                    $user->credits()->make([
                         'currency_code' => $price->currency->code,
                         'amount' => abs($price->price),
-                    ]);
+                    ])->recordAs('downgrade_credit', __('account.downgrade_credit'), $upgrade)->save();
                 }
 
                 DB::commit();

@@ -17,10 +17,11 @@ class DeleteInvoiceRequest extends AdminApiRequest
 
         $invoice = $this->route('invoice');
 
-        if (!$invoice instanceof Invoice || !config('settings.immutable_invoices_enabled', false)) {
+        if (!$invoice instanceof Invoice) {
             return true;
         }
 
-        return $invoice->status === Invoice::STATUS_DRAFT;
+        return $invoice->canBeEdited()
+            && (!config('settings.immutable_invoices_enabled', false) || $invoice->status === Invoice::STATUS_DRAFT);
     }
 }

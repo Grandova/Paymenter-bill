@@ -30,6 +30,11 @@ class CreateJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $this->service->refresh();
+        if ($this->service->status === Service::STATUS_CANCELLED) {
+            return;
+        }
+
         $data = [];
         // $data is the data that will be used to send the email, data is coming from the extension itself
         try {

@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Artisan;
 
 class FailedJobResource extends Resource
 {
+    protected static ?int $navigationSort = 80;
+
     protected static ?string $model = FailedJob::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-error-warning-line';
@@ -29,7 +31,7 @@ class FailedJobResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Other');
+        return __('System management');
     }
 
     public static function getNavigationBadge(): ?string

@@ -22,6 +22,8 @@ use Illuminate\Support\Facades\Event;
 
 class ApiResource extends Resource
 {
+    protected static ?int $navigationSort = 120;
+
     protected static ?string $model = ApiKey::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-key-2-line';
@@ -33,7 +35,7 @@ class ApiResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Other');
+        return __('System management');
     }
 
     public static function form(Schema $schema): Schema

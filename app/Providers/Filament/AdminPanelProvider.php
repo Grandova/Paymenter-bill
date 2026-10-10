@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Actions\Auth\Logout;
+use App\Admin\Resources\InvoiceTransactions\InvoiceTransactionResource;
 use App\Http\Middleware\ImpersonateMiddleware;
 use App\Http\Middleware\LockSession;
 use App\Http\Middleware\ResolveUserSession;
@@ -13,10 +14,13 @@ use Exception;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Field;
+use Filament\Forms\Components\FileUpload;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Infolists\Components\Entry;
+use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 use Filament\Notifications\Livewire\Notifications;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -48,6 +52,7 @@ class AdminPanelProvider extends PanelProvider
         Notifications::alignment(Alignment::Center);
 
         Field::configureUsing(fn (Field $field) => $field->translateLabel());
+        FileUpload::configureUsing(fn (FileUpload $field) => $field->placeholder(__('Drop files here or click to upload.')));
         Column::configureUsing(fn (Column $column) => $column->translateLabel());
         Entry::configureUsing(fn (Entry $entry) => $entry->translateLabel());
         Action::configureUsing(fn (Action $action) => $action->translateLabel());
@@ -91,14 +96,20 @@ class AdminPanelProvider extends PanelProvider
             )
             ->sidebarWidth('15rem')
             ->navigationGroups([
-                __('Products and services'),
-                __('Customers and support'),
-                __('Finance'),
-                __('Site content'),
-                __('Configuration'),
-                __('Extensions'),
-                __('System'),
-                __('Other'),
+                NavigationGroup::make()->label(fn () => __('Workbench')),
+                NavigationGroup::make()->label(fn () => __('Business management')),
+                NavigationGroup::make()->label(fn () => __('Customers and finance')),
+                NavigationGroup::make()->label(fn () => __('System management')),
+            ])
+            ->navigationItems([
+                NavigationItem::make('payment-transactions')
+                    ->label(fn () => __('Payment transactions'))
+                    ->group(fn () => __('Customers and finance'))
+                    ->icon('ri-wallet-2-line')
+                    ->sort(30)
+                    ->url(fn () => InvoiceTransactionResource::getUrl())
+                    ->visible(fn () => InvoiceTransactionResource::canViewAny())
+                    ->isActiveWhen(fn () => request()->routeIs(InvoiceTransactionResource::getRouteBaseName() . '.*')),
             ])
             ->middleware([
                 EncryptCookies::class,

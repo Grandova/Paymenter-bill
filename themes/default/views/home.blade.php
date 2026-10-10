@@ -23,7 +23,7 @@
                     <div class="flex gap-x-3 items-center">
                         @endif
                         @if ($category->image)
-                        <img src="{{ Storage::url($category->image) }}" alt="{{ $category->name }}"
+                        <img src="{{ Storage::url($category->image) }}" alt="{{ $category->name }}" loading="lazy" decoding="async"
                             class="aspect-square rounded-md {{ theme('small_images', false) ? 'w-14 h-fit' : 'w-full object-cover object-center' }}">
                         @endif
                         <div class="flex justify-between items-center">

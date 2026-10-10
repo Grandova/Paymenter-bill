@@ -12,6 +12,7 @@ use App\Http\Resources\ServiceResource;
 use App\Models\Service;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\QueryParameter;
+use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
 
 #[Group(name: 'Services', weight: 3)]
@@ -86,8 +87,11 @@ class ServiceController extends ApiController
      */
     public function destroy(DeleteServiceRequest $request, Service $service)
     {
-        // Delete the service
-        $service->delete();
+        DB::transaction(function () use ($service) {
+            $service = Service::query()->whereKey($service->id)->lockForUpdate()->firstOrFail();
+            $service->removePendingRenewalInvoiceItems(__('Service deleted by administrator'));
+            $service->delete();
+        });
 
         return $this->returnNoContent();
     }

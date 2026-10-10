@@ -14,9 +14,11 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\DB;
 
 class ViewInvoice extends ViewRecord
 {
@@ -26,8 +28,8 @@ class ViewInvoice extends ViewRecord
     {
         parent::mount($record);
 
-        if (!config('settings.immutable_invoices_enabled', false)) {
-            redirect(InvoiceResource::getUrl('edit', ['record' => $record]));
+        if (!config('settings.immutable_invoices_enabled', false) && $this->record->canBeEdited()) {
+            $this->redirect(InvoiceResource::getUrl('edit', ['record' => $record]));
         }
     }
 
@@ -101,12 +103,23 @@ class ViewInvoice extends ViewRecord
                         ->required(),
                 ])
                 ->action(function (Invoice $invoice, array $data) {
-                    $invoice->update([
-                        'status' => Invoice::STATUS_CANCELLED,
-                        'cancellation_reason' => $data['cancellation_reason'],
-                    ]);
+                    DB::transaction(function () use ($invoice, $data): void {
+                        $lockedInvoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+                        if (!$lockedInvoice->canBeEdited() || in_array($lockedInvoice->status, [Invoice::STATUS_CANCELLED, Invoice::STATUS_PAID], true)) {
+                            Notification::make()->title(__('invoices.invoice_cancel_blocked'))->danger()->send();
+
+                            return;
+                        }
+
+                        $lockedInvoice->update([
+                            'status' => Invoice::STATUS_CANCELLED,
+                            'cancellation_reason' => $data['cancellation_reason'],
+                        ]);
+                        $lockedInvoice->cancelPendingServices();
+                    });
                 })
-                ->visible(fn (Invoice $invoice): bool => $invoice->status !== Invoice::STATUS_CANCELLED),
+                ->visible(fn (Invoice $invoice): bool => $invoice->canBeEdited()
+                    && !in_array($invoice->status, [Invoice::STATUS_CANCELLED, Invoice::STATUS_PAID], true)),
             Action::make('pdf')
                 ->label(__('Download PDF'))
                 ->action(function (Invoice $invoice) {

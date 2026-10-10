@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Events\Invoice as InvoiceEvent;
 use App\Models\Invoice;
+use App\Models\ServiceUpgrade;
 use App\Services\Invoice\CreateInvoiceSnapshotService;
 use App\Services\Invoice\ProcessPaidInvoiceService;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +56,10 @@ class InvoiceObserver
     {
         if ($invoice->status === Invoice::STATUS_CANCELLED && $invoice->getOriginal('status') !== Invoice::STATUS_CANCELLED) {
             $invoice->createCancellationCreditNote($invoice->cancellation_reason);
+            ServiceUpgrade::where('invoice_id', $invoice->id)
+                ->where('status', ServiceUpgrade::STATUS_PENDING)
+                ->get()
+                ->each(fn (ServiceUpgrade $upgrade) => $upgrade->update(['status' => ServiceUpgrade::STATUS_CANCELLED]));
         }
 
         if ($invoice->getOriginal('status') === Invoice::STATUS_DRAFT && $invoice->status === Invoice::STATUS_PENDING) {
@@ -83,6 +88,17 @@ class InvoiceObserver
     public function deleted(Invoice $invoice): void
     {
         event(new InvoiceEvent\Deleted($invoice));
+    }
+
+    /**
+     * Handle the Invoice "deleting" event.
+     */
+    public function deleting(Invoice $invoice): void
+    {
+        ServiceUpgrade::where('invoice_id', $invoice->id)
+            ->where('status', ServiceUpgrade::STATUS_PENDING)
+            ->get()
+            ->each(fn (ServiceUpgrade $upgrade) => $upgrade->update(['status' => ServiceUpgrade::STATUS_CANCELLED]));
     }
 
     /**

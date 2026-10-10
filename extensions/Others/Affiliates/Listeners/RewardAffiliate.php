@@ -5,7 +5,8 @@ namespace Paymenter\Extensions\Others\Affiliates\Listeners;
 use App\Helpers\ExtensionHelper;
 use App\Models\Invoice;
 use App\Models\Service;
-use Illuminate\Support\Collection;
+use App\Models\ServiceUpgrade;
+use Illuminate\Support\Facades\DB;
 use Paymenter\Extensions\Others\Affiliates\Models\Affiliate;
 use Paymenter\Extensions\Others\Affiliates\Models\AffiliateOrder;
 
@@ -29,10 +30,13 @@ class RewardAffiliate
          */
         $invoice = $event->invoice;
 
-        if ($invoice->items()->first()->reference_type !== Service::class) {
-            return;
+        $serviceItem = $invoice->items()->where('reference_type', Service::class)->first();
+        $service = $serviceItem?->reference;
+        if (!$service) {
+            $upgradeItem = $invoice->items()->where('reference_type', ServiceUpgrade::class)->first();
+            $service = $upgradeItem?->reference?->service;
         }
-        $order = $invoice->items()->first()->reference->order;
+        $order = $service?->order;
         if (!$order) {
             return;
         }
@@ -46,29 +50,45 @@ class RewardAffiliate
          * @var Affiliate $affiliate
          */
         $affiliate = $referral->affiliate;
+        if (!$affiliate->enabled) {
+            return;
+        }
+
         $extension = ExtensionHelper::getExtension('other', 'Affiliates');
-        $reward_percentage = $affiliate->reward ?: $extension->config('default_reward');
-        $reward_amount = $invoice->total * $reward_percentage / 100;
+        $reward_percentage = $affiliate->reward ?? $extension->config('default_reward');
+        $reward_amount = round($invoice->total * $reward_percentage / 100, 2);
+        if ($reward_amount <= 0) {
+            return;
+        }
 
-        /**
-         * @var Collection
-         */
-        $user_credits = $affiliate->user->credits;
-        $affiliate_credits = $user_credits->filter(function ($credit) use ($invoice) {
-            return $credit->currency_code === $invoice->currency_code;
-        })->first();
-
-        if ($affiliate_credits) {
-            // Add reward to credits
-            $affiliate->user->credits()->where('currency_code', $invoice->currency_code)->update([
-                'amount' => $affiliate_credits->amount + $reward_amount,
-            ]);
-        } else {
-            // Create new credits with the invoice's currency code
-            $affiliate->user->credits()->create([
+        DB::transaction(function () use ($affiliate, $invoice, $reward_amount) {
+            $inserted = DB::table('ext_affiliate_rewards')->insertOrIgnore([
+                'affiliate_id' => $affiliate->id,
+                'invoice_id' => $invoice->id,
                 'amount' => $reward_amount,
                 'currency_code' => $invoice->currency_code,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
-        }
+
+            if (!$inserted) {
+                return;
+            }
+
+            $credits = $affiliate->user->credits()
+                ->where('currency_code', $invoice->currency_code)
+                ->lockForUpdate()
+                ->first();
+
+            if ($credits) {
+                $credits->amount = number_format(((int) round((float) $credits->amount * 100) + (int) round($reward_amount * 100)) / 100, 2, '.', '');
+                $credits->recordAs('affiliate_reward', __('account.affiliate_reward', ['invoice' => $invoice->number]), $invoice)->save();
+            } else {
+                $affiliate->user->credits()->make([
+                    'amount' => $reward_amount,
+                    'currency_code' => $invoice->currency_code,
+                ])->recordAs('affiliate_reward', __('account.affiliate_reward', ['invoice' => $invoice->number]), $invoice)->save();
+            }
+        });
     }
 }

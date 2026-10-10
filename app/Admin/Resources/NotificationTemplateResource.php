@@ -23,6 +23,8 @@ use Filament\Tables\Table;
 
 class NotificationTemplateResource extends Resource
 {
+    protected static ?int $navigationSort = 30;
+
     protected static ?string $model = NotificationTemplate::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-mail-settings-line';
@@ -36,7 +38,7 @@ class NotificationTemplateResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Other');
+        return __('System management');
     }
 
     public static function form(Schema $schema): Schema

@@ -20,17 +20,23 @@ class InvoiceTransaction extends Model implements Auditable
         'gateway_id',
         'amount',
         'refunded_amount',
+        'credited_amount',
         'fee',
         'transaction_id',
         'status',
         'is_credit_transaction',
+        'credited_to_balance',
+        'applied_to_invoice',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'refunded_amount' => 'decimal:2',
+        'credited_amount' => 'decimal:2',
         'fee' => 'decimal:2',
         'status' => InvoiceTransactionStatus::class,
+        'credited_to_balance' => 'boolean',
+        'applied_to_invoice' => 'boolean',
     ];
 
     public function invoice()
@@ -49,7 +55,7 @@ class InvoiceTransaction extends Model implements Auditable
     public function refundableAmount(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->amount - $this->refunded_amount
+            get: fn () => $this->amount - $this->refunded_amount - $this->credited_amount
         );
     }
 
@@ -80,6 +86,13 @@ class InvoiceTransaction extends Model implements Auditable
     {
         return Attribute::make(
             get: fn () => new Price(['price' => $this->refunded_amount, 'currency' => $this->invoice->currency])
+        );
+    }
+
+    public function formattedCreditedAmount(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => new Price(['price' => $this->credited_amount, 'currency' => $this->invoice->currency])
         );
     }
 

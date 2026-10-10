@@ -27,6 +27,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class TicketResource extends Resource
 {
+    protected static ?int $navigationSort = 40;
+
     protected static ?string $model = Ticket::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-customer-service-line';
@@ -40,7 +42,12 @@ class TicketResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Customers and support');
+        return __('Customers and finance');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Ticket management');
     }
 
     public static function getNavigationBadge(): ?string

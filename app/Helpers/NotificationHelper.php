@@ -141,24 +141,24 @@ class NotificationHelper
             'has_subscription' => $invoice->items->filter(fn ($item) => $item->reference_type === Service::class && $item->reference->subscription_id)->isNotEmpty(),
         ];
 
-        // Generate the invoice PDF
-        $pdf = PDF::generateInvoice($invoice);
-        // Generate path
-        if (!file_exists(storage_path('app/invoices'))) {
-            // Create the directory if it doesn't exist
-            mkdir(storage_path('app/invoices'), 0755, true);
-        }
-        // Save the PDF to a temporary location
-        $pdfPath = storage_path('app/invoices/' . ($invoice->number ?? $invoice->id) . '.pdf');
-        $pdf->save($pdfPath);
+        $attachments = [];
+        $notification = NotificationTemplate::where('key', $key)->where('enabled', true)->first();
+        $userPreference = $notification?->preferences()->where('user_id', $user->id)->first();
 
-        // Attach the PDF to the email
-        $attachments = [
-            [
+        if ($notification && $notification->isEnabledForPreference($userPreference, 'mail') && !config('settings.mail_disable')) {
+            // Generate the invoice PDF only when it will be attached to an email.
+            $pdf = PDF::generateInvoice($invoice);
+            if (!file_exists(storage_path('app/invoices'))) {
+                mkdir(storage_path('app/invoices'), 0755, true);
+            }
+            $pdfPath = storage_path('app/invoices/' . ($invoice->number ?? $invoice->id) . '.pdf');
+            $pdf->save($pdfPath);
+
+            $attachments = [[
                 'path' => 'invoices/' . ($invoice->number ?? $invoice->id) . '.pdf',
                 'name' => 'invoice.pdf',
-            ],
-        ];
+            ]];
+        }
 
         self::sendNotification($key, $data, $user, $attachments);
     }

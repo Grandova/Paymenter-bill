@@ -30,7 +30,7 @@ class IncreamentAffiliateSignups
         $referral_code = Cookie::get('referred_by');
 
         /** @var Affiliate */
-        $affiliate = Affiliate::where('code', $referral_code)->first();
+        $affiliate = Affiliate::where('code', $referral_code)->where('enabled', true)->first();
         if (!$affiliate) {
             return;
         }

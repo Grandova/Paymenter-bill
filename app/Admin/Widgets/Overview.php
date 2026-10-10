@@ -4,6 +4,7 @@ namespace App\Admin\Widgets;
 
 use App\Enums\DashboardPeriod;
 use App\Enums\InvoiceTransactionStatus;
+use App\Models\Invoice;
 use App\Models\InvoiceTransaction;
 use App\Models\Service;
 use App\Models\Ticket;
@@ -40,15 +41,18 @@ class Overview extends BaseWidget
 
     private function invoiceTransaction(): Stat
     {
+        $currency = config('settings.default_currency');
         $query = InvoiceTransaction::query()
             ->where('status', InvoiceTransactionStatus::Succeeded)
-            ->where('is_credit_transaction', false);
+            ->where('is_credit_transaction', false)
+            ->where('credited_to_balance', false)
+            ->whereHas('invoice', fn ($query) => $query->where('status', '!=', Invoice::STATUS_CANCELLED)->where('currency_code', $currency));
 
-        $chart = $this->trend(Trend::query(clone $query))->sum('amount');
+        $chart = $this->trend(Trend::query(clone $query))->sum('amount - refunded_amount - credited_amount');
 
-        $previous = $this->previousPeriod(clone $query)->sum('amount');
+        $previous = $this->previousPeriod(clone $query)->sum('amount - refunded_amount - credited_amount');
 
-        return $this->stat(__('Revenue'), $chart, $previous);
+        return $this->stat(__('Revenue') . ' (' . $currency . ')', $chart, $previous);
     }
 
     private function getData(string $model, string $name, bool $lowerIsBetter = false): Stat

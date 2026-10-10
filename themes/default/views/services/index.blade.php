@@ -1,9 +1,17 @@
 <div @class(['container client-services' => !$dashboard, 'client-services' => $dashboard])>
     <div class="client-panel">
-        <div class="mb-6">
-            <h1 class="text-2xl font-bold">{{ __('Your services') }}</h1>
-            <p class="mt-3 text-sm text-muted">{{ __('Manage your services and billing information here.') }}</p>
+        <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold">{{ __('Your services') }}</h1>
+                <p class="mt-3 text-sm text-muted">{{ __('Manage your services and billing information here.') }}</p>
+            </div>
+            @if(count($selectedServices))
+            <button type="button" wire:click="renewSelected" wire:confirm="{{ __('services.renew_selected_confirm') }}" wire:loading.attr="disabled" class="rounded-md bg-primary px-4 py-2 text-white hover:opacity-90 disabled:opacity-60">
+                {{ __('services.renew_selected', ['count' => count($selectedServices)]) }}
+            </button>
+            @endif
         </div>
+        @error('selectedServices')<p class="mb-4 text-sm text-danger" role="alert">{{ $message }}</p>@enderror
         <div class="grid sm:grid-cols-2 gap-4 mb-6">
             <x-form.input name="search" wire:model.live.debounce.300ms="search" :placeholder="__('Search services by name')" :aria-label="__('Search services by name')" />
             <x-form.select name="status" wire:model.live="status" :aria-label="__('services.status')">
@@ -17,6 +25,7 @@
             <table class="service-table">
                 <thead>
                     <tr>
+                        <th>{{ __('services.select_for_renewal') }}</th>
                         <th>{{ __('services.name') }}</th>
                         <th>{{ __('services.billing_cycle') }}</th>
                         <th>{{ __('services.renews_on') }}</th>
@@ -27,6 +36,13 @@
                 <tbody>
                     @forelse ($services as $service)
                     <tr wire:key="service-{{ $service->id }}">
+                        <td>
+                            @if(in_array($service->status, ['active', 'suspended'], true) && $service->plan->type === 'recurring' && !$service->cancellation_exists && !$service->has_pending_invoice && !$service->has_pending_upgrade)
+                            <input type="checkbox" value="{{ $service->id }}" wire:model.live="selectedServices" aria-label="{{ __('services.select_for_renewal') }}: {{ $service->label }}" class="size-4 rounded border-neutral text-primary focus:ring-primary">
+                            @else
+                            <span class="text-muted">—</span>
+                            @endif
+                        </td>
                         <td>
                             <a href="{{ route('services.show', $service) }}" wire:navigate class="font-semibold hover:underline">{{ $service->label }}</a>
                             <p class="text-muted mt-1">{{ $service->product->category->name }}</p>
@@ -54,7 +70,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="5" class="text-center text-muted py-12">{{ __('services.no_services') }}</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-12">{{ __('services.no_services') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>

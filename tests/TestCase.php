@@ -7,11 +7,22 @@ use App\Models\Price;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\UserSession;
+use App\Providers\SettingsProvider;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Qirolab\Theme\Theme;
 
 abstract class TestCase extends BaseTestCase
 {
     protected bool $seed = true;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        SettingsProvider::getSettings(true);
+        config(['settings' => collect(config('settings', []))->put('mail_disable', true)]);
+        Theme::set(config('settings.theme', 'default'), 'default');
+        $this->withoutVite();
+    }
 
     //
     protected function createProduct(array $attributes = [])

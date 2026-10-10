@@ -24,6 +24,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class CouponResource extends Resource
 {
+    protected static ?int $navigationSort = 60;
+
     protected static ?string $model = Coupon::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-coupon-line';
@@ -37,7 +39,7 @@ class CouponResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Finance');
+        return __('Customers and finance');
     }
 
     public static function form(Schema $schema): Schema

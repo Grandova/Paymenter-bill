@@ -10,9 +10,14 @@ class Dashboard extends BaseDashboard
 
     protected static string|\BackedEnum|null $activeNavigationIcon = 'ri-function-fill';
 
-    public static function getNavigationLabel(): string
+    public static function getNavigationGroup(): ?string
     {
         return __('Workbench');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Data overview');
     }
 
     public function getTitle(): string

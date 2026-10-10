@@ -37,12 +37,15 @@ class Service extends Model implements Auditable
         'user_id',
         'currency_code',
         'billing_agreement_id',
+        'auto_renew',
         'suspend_hold_until',
     ];
 
     protected $casts = [
-        'expires_at' => 'date',
+        'expires_at' => 'datetime',
+        'auto_renew' => 'boolean',
         'suspend_hold_until' => 'date',
+        'renewal_count' => 'integer',
     ];
 
     /**
@@ -114,7 +117,7 @@ class Service extends Model implements Auditable
             );
         }
         $date = $this->expires_at ?? now();
-        $endDate = $date->copy()->{'add' . ucfirst($this->plan->billing_unit) . 's'}($this->plan->billing_period);
+        $endDate = $this->addBillingPeriod($date->copy());
 
         return Attribute::make(
             get: fn () => $this->product->name . ' (' . $date->translatedFormat(__('general.date_format')) . ' - ' . $endDate->translatedFormat(__('general.date_format')) . ')'
@@ -136,7 +139,18 @@ class Service extends Model implements Auditable
             $date = $this->expires_at;
         }
 
-        return $date->{'add' . ucfirst($this->plan->billing_unit) . 's'}($this->plan->billing_period);
+        return $this->addBillingPeriod($date);
+    }
+
+    private function addBillingPeriod($date)
+    {
+        return match ($this->plan->billing_unit) {
+            'hour' => $date->addHours($this->plan->billing_period),
+            'day' => $date->addDays($this->plan->billing_period),
+            'week' => $date->addWeeks($this->plan->billing_period),
+            'month' => $date->addMonthsNoOverflow($this->plan->billing_period),
+            'year' => $date->addYearsNoOverflow($this->plan->billing_period),
+        };
     }
 
     /**
@@ -179,6 +193,49 @@ class Service extends Model implements Auditable
         return $this->hasManyThrough(Invoice::class, InvoiceItem::class, 'reference_id', 'id', 'id', 'invoice_id')->where('reference_type', Service::class);
     }
 
+    public function removePendingRenewalInvoiceItems(string $reason): void
+    {
+        $invoices = $this->invoices()
+            ->where('status', Invoice::STATUS_PENDING)
+            ->orderBy('invoices.id')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($invoices as $invoice) {
+            $invoice->items()
+                ->where('reference_type', self::class)
+                ->where('reference_id', $this->id)
+                ->delete();
+
+            if (!$invoice->items()->exists()) {
+                $invoice->update([
+                    'status' => Invoice::STATUS_CANCELLED,
+                    'cancellation_reason' => $reason,
+                ]);
+            }
+        }
+
+        ServiceUpgrade::where('service_id', $this->id)
+            ->where('type', 'renewal_cycle')
+            ->where('status', ServiceUpgrade::STATUS_PENDING)
+            ->update(['status' => ServiceUpgrade::STATUS_CANCELLED]);
+
+        ServiceUpgrade::where('service_id', $this->id)
+            ->where('type', '!=', 'renewal_cycle')
+            ->where('status', ServiceUpgrade::STATUS_PENDING)
+            ->get()
+            ->each(function (ServiceUpgrade $upgrade) use ($reason) {
+                if ($upgrade->invoice?->status === Invoice::STATUS_PENDING) {
+                    $upgrade->invoice->update([
+                        'status' => Invoice::STATUS_CANCELLED,
+                        'cancellation_reason' => $reason,
+                    ]);
+                } else {
+                    $upgrade->update(['status' => ServiceUpgrade::STATUS_CANCELLED]);
+                }
+            });
+    }
+
     /**
      * Get cancellation requests
      */
@@ -197,7 +254,7 @@ class Service extends Model implements Auditable
     public function upgradable(): Attribute
     {
         return Attribute::make(
-            get: fn () => ($this->productUpgrades()->count() > 0 || $this->product->upgradableConfigOptions()->count() > 0) && $this->status == 'active' && $this->upgrade->where('status', ServiceUpgrade::STATUS_PENDING)->count() == 0
+            get: fn () => ($this->productUpgrades()->count() > 0 || $this->product->upgradableConfigOptions()->count() > 0) && $this->status == 'active' && !$this->cancellation()->exists() && $this->upgrade->where('status', ServiceUpgrade::STATUS_PENDING)->count() == 0
         );
     }
 
@@ -208,7 +265,14 @@ class Service extends Model implements Auditable
             if ($product->stock !== null && ($product->stock - $this->quantity) < 0) {
                 return null;
             }
-            $plan = $product->plans()->where('billing_unit', $this->plan->billing_unit)->where('billing_period', $this->plan->billing_period)->get();
+            $plan = $product->plans()
+                ->where('billing_unit', $this->plan->billing_unit)
+                ->where('billing_period', $this->plan->billing_period)
+                ->where(function ($query) {
+                    $query->where('type', 'free')
+                        ->orWhereHas('prices', fn ($query) => $query->where('currency_code', $this->currency_code));
+                })
+                ->get();
             // Only get the upgrades that have the exact same billing cycle as the service
             if ($plan->count() > 0) {
                 $product->plan = $plan->first();
@@ -233,10 +297,12 @@ class Service extends Model implements Auditable
         });
 
         // Add coupon discount if applicable
-        if ($this->coupon) {
-            $invoices = $this->invoices()->where('status', 'paid')->count() + 1;
+        if ($this->coupon && ($this->coupon->products->isEmpty() || $this->coupon->products->contains('id', $this->product_id))) {
+            $paidInvoices = $this->invoices()->where('status', 'paid')->count();
+            $renewals = max((int) $this->renewal_count, max(0, $paidInvoices - 1));
+            $invoices = $renewals + 2;
             // If it already used for the recurring period, do not apply the discount
-            if ($this->coupon->recurring == 0 || $invoices <= $this->coupon->recurring) {
+            if ($this->coupon->recurring === 0 || $invoices <= ($this->coupon->recurring ?? 1)) {
                 $discount = $this->coupon->calculateDiscount($price);
                 $price -= $discount;
             }

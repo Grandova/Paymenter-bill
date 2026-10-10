@@ -23,6 +23,8 @@ use Paymenter\Extensions\Others\Announcements\Models\Announcement;
 
 class AnnouncementResource extends Resource
 {
+    protected static ?int $navigationSort = 35;
+
     protected static ?string $model = Announcement::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-megaphone-line';
@@ -36,7 +38,7 @@ class AnnouncementResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Site content');
+        return __('System management');
     }
 
     public static function form(Schema $schema): Schema

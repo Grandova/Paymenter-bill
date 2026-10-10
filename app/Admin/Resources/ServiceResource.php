@@ -12,19 +12,20 @@ use App\Admin\Resources\ServiceResource\RelationManagers\ConfigOptionsRelationMa
 use App\Admin\Resources\ServiceResource\RelationManagers\InvoicesRelationManager;
 use App\Helpers\ExtensionHelper;
 use App\Models\Currency;
+use App\Models\Plan;
 use App\Models\Product;
 use App\Models\Service;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Filament\Tables\Columns\TextColumn;
@@ -74,10 +75,26 @@ class ServiceResource extends Resource
                     ->searchable()
                     ->live()
                     ->preload()
+                    ->afterStateUpdated(fn (Set $set) => $set('plan_id', null))
                     ->placeholder(__('Select the product')),
                 Select::make('plan_id')
                     ->label(__('Plan'))
                     ->required()
+                    ->rules(fn (Get $get) => ['required', function ($attribute, $value, $fail) use ($get) {
+                        $validPlan = Plan::query()
+                            ->where('priceable_id', $get('product_id'))
+                            ->where('priceable_type', Product::class)
+                            ->whereKey($value)
+                            ->where(function (Builder $query) use ($get) {
+                                $query->where('type', 'free')
+                                    ->orWhereHas('prices', fn (Builder $query) => $query->where('currency_code', $get('currency_code')));
+                            })
+                            ->exists();
+
+                        if (!$validPlan) {
+                            $fail(__('The selected plan is invalid.'));
+                        }
+                    }])
                     ->relationship('plan', 'name', fn (Builder $query, Get $get) => $query->where('priceable_id', $get('product_id'))->where('priceable_type', Product::class))
                     ->searchable()
                     ->preload()
@@ -87,6 +104,7 @@ class ServiceResource extends Resource
                 Select::make('status')
                     ->label(__('Status'))
                     ->required()
+                    ->disabled(fn (?Service $record) => $record?->product->server_id !== null)
                     ->options([
                         // active, pending, suspended, cancelled
                         'active' => __('Active'),
@@ -97,6 +115,9 @@ class ServiceResource extends Resource
                     ->default('pending'),
                 TextInput::make('quantity')
                     ->label(__('Quantity'))
+                    ->integer()
+                    ->minValue(1)
+                    ->default(1)
                     ->required()
                     ->placeholder(__('Enter the quantity')),
                 DatePicker::make('expires_at')
@@ -167,6 +188,9 @@ class ServiceResource extends Resource
                     ->searchable()
                     ->preload()
                     ->placeholder(__('Select the billing agreement')),
+                Toggle::make('auto_renew')
+                    ->label(__('Balance Auto-Renew'))
+                    ->helperText(__('Balance auto-renew is opt-in per service.')),
                 TextInput::make('subscription_id')
                     ->label(__('Subscription ID (deprecated)'))
                     ->nullable()
@@ -222,6 +246,11 @@ class ServiceResource extends Resource
                     ->label(__('Status'))
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('auto_renew')
+                    ->label(__('Balance Auto-Renew'))
+                    ->badge()
+                    ->formatStateUsing(fn (bool $state) => $state ? __('Enabled') : __('Disabled'))
+                    ->color(fn (bool $state) => $state ? 'success' : 'gray'),
                 TextColumn::make('expires_at')
                     ->label(__('Expires At'))
                     ->date()
@@ -237,6 +266,9 @@ class ServiceResource extends Resource
                         'suspended' => __('Suspended'),
                         'cancelled' => __('Cancelled'),
                     ]),
+                SelectFilter::make('auto_renew')
+                    ->label(__('Balance Auto-Renew'))
+                    ->options([1 => __('Enabled'), 0 => __('Disabled')]),
                 SelectFilter::make('user')
                     ->label(__('User'))
                     ->relationship('user', 'id')
@@ -272,11 +304,7 @@ class ServiceResource extends Resource
             ->recordActions([
                 EditAction::make(),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->toolbarActions([]);
     }
 
     public static function getRelations(): array

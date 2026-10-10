@@ -137,6 +137,55 @@
                 </dl>
             </section>
         </div>
+        @if(!empty($instance['port_mappings']) || $canManage)
+        <section class="vm-panel vm-port-mappings">
+            <div class="vm-panel-heading">
+                <span class="vm-panel-icon"><x-ri-share-forward-2-line /></span>
+                <div>
+                    <h3>NAT 端口映射</h3>
+                    <p>公网端口转发到容器端口；默认 SSH 映射不可删除。</p>
+                </div>
+                @if(isset($instance['port_mapping_limit']))
+                <span class="vm-port-quota">{{ count($instance['port_mappings'] ?? []) }} / {{ $instance['port_mapping_limit'] ?: '不限' }}</span>
+                @endif
+            </div>
+            @if(count($instance['port_mappings'] ?? []))
+            <div class="vm-port-table-wrap">
+                <table class="vm-port-table">
+                    <thead><tr><th>名称</th><th>协议</th><th>公网端口</th><th>容器端口</th><th>操作</th></tr></thead>
+                    <tbody>
+                        @foreach($instance['port_mappings'] as $index => $mapping)
+                        <tr>
+                            <td>{{ $mapping['description'] ?? '端口映射' }} @if((int) ($mapping['container_port'] ?? 0) === 22)<span class="vm-port-default">默认 SSH</span>@endif</td>
+                            <td>{{ strtoupper($mapping['protocol'] ?? 'tcp') }}</td>
+                            <td>{{ $mapping['host_port'] ?? '—' }}</td>
+                            <td>{{ $mapping['container_port'] ?? '—' }}</td>
+                            <td>
+                                @if($canManage && (int) ($mapping['container_port'] ?? 0) !== 22)
+                                <button type="button" class="vm-port-delete" wire:click="deletePortMapping({{ $index }})" wire:confirm="确定删除这条端口映射吗？" wire:loading.attr="disabled">删除</button>
+                                @elseif((int) ($mapping['container_port'] ?? 0) === 22)
+                                <span class="vm-port-locked">不可删除</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @else
+            <p class="vm-port-empty">暂时没有端口映射。</p>
+            @endif
+            @if($canManage)
+            <form class="vm-port-form" wire:submit="addPortMapping">
+                <label>名称<input type="text" wire:model="mappingName" maxlength="50" placeholder="例如：网站 HTTP" /></label>
+                <label>协议<select wire:model="mappingProtocol"><option value="tcp">TCP</option><option value="udp">UDP</option></select></label>
+                <label>公网端口<input type="number" wire:model="mappingHostPort" min="1" max="65535" required placeholder="手动填写" /></label>
+                <label>容器端口<input type="number" wire:model="mappingContainerPort" min="1" max="65535" required placeholder="例如：8080" /></label>
+                <button type="submit" class="vm-primary" wire:loading.attr="disabled" wire:target="addPortMapping">添加映射</button>
+            </form>
+            @endif
+        </section>
+        @endif
     @endif
     <footer class="vm-footer">{{ $updatedAt ? '最近同步于 '.$updatedAt : '尚未同步' }} · 运行状态与服务状态分别显示</footer>
 </div>

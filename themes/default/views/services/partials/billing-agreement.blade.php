@@ -1,17 +1,17 @@
-@if($service->plan->type == 'recurring' && $service->status == 'active' && Auth::user()->billingAgreements->count() > 0)
+@if($service->plan->type == 'recurring' && $service->status == 'active' && (count($billingAgreements) > 0 || $service->billing_agreement_id))
 <div class="flex items-center text-base">
     <!-- Auto paying using -->
     <span class="mr-2">{{ __(key: 'services.auto_pay') }}:</span>
-    <span class="text-base/50">{{ $service->billingAgreement ? $service->billingAgreement->name :
-        __('services.auto_pay_not_configured') }}
-        <!-- Edit icon -->
+    <span class="text-base/50">{{ $service->billingAgreement?->name ?? __('services.auto_pay_not_configured') }}
+        @if(count($billingAgreements) > 0)
         <button wire:click="$set('showBillingAgreement', true)" class="cursor-pointer">
             <x-ri-edit-line class="inline size-4 ml-1 text-base/50" />
         </button>
-        @if($service->billingAgreement)
+        @endif
+        @if($service->billing_agreement_id)
         <button  x-on:click="$store.confirmation.confirm({
                                 title: '{{ __('services.remove_payment_method') }}',
-                                message: '{{ __('services.remove_payment_method_confirm', ['name' => $service->billingAgreement->name]) }}',
+                                message: '{{ __('services.remove_payment_method_confirm', ['name' => $service->billingAgreement?->name ?? __('services.auto_pay_not_configured')]) }}',
                                 confirmText: '{{ __('common.confirm') }}',
                                 cancelText: '{{ __('common.cancel') }}',
                                 callback: () => $wire.clearBillingAgreement()
@@ -21,7 +21,7 @@
         @endif
     </span>
 </div>
-@if($showBillingAgreement)
+@if($showBillingAgreement && count($billingAgreements) > 0)
 <x-modal :title="__('services.select_billing_agreement')" open="{{ $showBillingAgreement }}">
     <x-slot name="closeTrigger">
         <div class="flex gap-4">
@@ -31,7 +31,7 @@
         </div>
     </x-slot>
     <div class="space-y-4">
-        @foreach(Auth::user()->billingAgreements as $agreement)
+        @foreach($billingAgreements as $agreement)
         <div wire:click="$set('selectedMethod', '{{ $agreement->ulid }}')"
             class="flex items-center justify-between p-4 bg-background-secondary border rounded-lg cursor-pointer transition-all
                     {{ $selectedMethod === $agreement->ulid ? 'border-primary ring-2 ring-primary' : 'border-neutral hover:border-neutral-focus' }}"

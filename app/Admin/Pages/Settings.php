@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Gate;
 
 class Settings extends Page implements HasForms
 {
+    protected static ?int $navigationSort = 50;
+
     use InteractsWithForms;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-settings-3-line';
@@ -32,7 +34,7 @@ class Settings extends Page implements HasForms
 
     public static function getNavigationGroup(): ?string
     {
-        return __('System');
+        return __('System management');
     }
 
     public static function getNavigationLabel(): string

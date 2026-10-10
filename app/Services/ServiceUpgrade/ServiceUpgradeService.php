@@ -2,9 +2,12 @@
 
 namespace App\Services\ServiceUpgrade;
 
+use App\Exceptions\DisplayException;
 use App\Jobs\Server\UpgradeJob;
+use App\Models\Product;
 use App\Models\Service;
 use App\Models\ServiceUpgrade;
+use App\Services\Service\RenewServiceService;
 use Illuminate\Support\Facades\DB;
 
 class ServiceUpgradeService
@@ -18,25 +21,65 @@ class ServiceUpgradeService
     public function handle(ServiceUpgrade $serviceUpgrade)
     {
         return DB::transaction(function () use ($serviceUpgrade) {
-            $serviceUpgrade->status = ServiceUpgrade::STATUS_COMPLETED;
-            $serviceUpgrade->save();
+            if ($serviceUpgrade->type === 'renewal_cycle') {
+                $service = Service::query()->whereKey($serviceUpgrade->service_id)->lockForUpdate()->firstOrFail();
+                $serviceUpgrade = ServiceUpgrade::query()->whereKey($serviceUpgrade->id)->lockForUpdate()->firstOrFail();
+                if ($serviceUpgrade->status !== ServiceUpgrade::STATUS_PENDING) {
+                    return;
+                }
 
-            // Check if old product stock should be increased
-            $service = $serviceUpgrade->service;
-            if ($service->product->stock !== null) {
-                $serviceUpgrade->service->product->increment('stock', $serviceUpgrade->service->quantity);
+                if (!in_array($service->status, [Service::STATUS_ACTIVE, Service::STATUS_SUSPENDED], true)) {
+                    return;
+                }
+
+                $service->plan_id = $serviceUpgrade->plan_id;
+                $service->save();
+                (new RenewServiceService)->handle($service);
+
+                $service->refresh();
+                $service->price = $service->calculatePrice();
+                $service->save();
+
+                $serviceUpgrade->status = ServiceUpgrade::STATUS_COMPLETED;
+                $serviceUpgrade->save();
+
+                return;
             }
 
+            $service = Service::query()->whereKey($serviceUpgrade->service_id)->lockForUpdate()->firstOrFail();
+            $serviceUpgrade = ServiceUpgrade::query()->whereKey($serviceUpgrade->id)->lockForUpdate()->firstOrFail();
+            if ($serviceUpgrade->status !== ServiceUpgrade::STATUS_PENDING) {
+                return;
+            }
+
+            $products = Product::query()
+                ->whereIn('id', [$service->product_id, $serviceUpgrade->product_id])
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+            $oldProduct = $products->get($service->product_id);
+            $newProduct = $products->get($serviceUpgrade->product_id);
+
+            if ($service->product_id !== $serviceUpgrade->product_id && $newProduct->stock !== null && !$serviceUpgrade->stock_reserved) {
+                if ($newProduct->stock < $service->quantity) {
+                    throw new DisplayException(__('product.out_of_stock', ['product' => $newProduct->name]));
+                }
+                $newProduct->decrement('stock', $service->quantity);
+            }
+
+            if ($service->product_id !== $serviceUpgrade->product_id && $oldProduct->stock !== null) {
+                $oldProduct->increment('stock', $service->quantity);
+            }
+
+            $serviceUpgrade->status = ServiceUpgrade::STATUS_COMPLETED;
+            $serviceUpgrade->stock_reserved = false;
+            $serviceUpgrade->save();
             $service->plan_id = $serviceUpgrade->plan_id;
             $service->product_id = $serviceUpgrade->product_id;
             $service->save();
 
             $service->refresh();
-
-            // Decrease stock of new product if applicable
-            if ($service->product->stock !== null) {
-                $service->product->decrement('stock', $service->quantity);
-            }
 
             // Update service configurations - remove old configs and add new ones
             $newConfigOptionIds = $serviceUpgrade->configs->pluck('config_option_id')->toArray();
@@ -76,7 +119,7 @@ class ServiceUpgradeService
             }
 
             if ($service->product->server) {
-                UpgradeJob::dispatch($service);
+                UpgradeJob::dispatch($service)->afterCommit();
             }
         });
     }

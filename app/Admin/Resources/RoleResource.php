@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Event;
 
 class RoleResource extends Resource
 {
+    protected static ?int $navigationSort = 60;
+
     protected static ?string $model = Role::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-shield-user-line';
@@ -32,7 +34,7 @@ class RoleResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Configuration');
+        return __('System management');
     }
 
     public static function form(Schema $schema): Schema

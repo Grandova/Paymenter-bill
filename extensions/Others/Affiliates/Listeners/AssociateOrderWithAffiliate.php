@@ -32,7 +32,7 @@ class AssociateOrderWithAffiliate
         $referral_code = Cookie::get('referred_by');
 
         /** @var Affiliate */
-        $affiliate = Affiliate::where('code', $referral_code)->first();
+        $affiliate = Affiliate::where('code', $referral_code)->where('enabled', true)->first();
         if (!$affiliate || $affiliate->user->id === $event->order->user_id) {
             return;
         }

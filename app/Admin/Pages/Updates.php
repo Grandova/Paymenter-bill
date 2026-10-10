@@ -26,6 +26,8 @@ use Symfony\Component\Console\Output\BufferedOutput;
 
 class Updates extends Page implements HasActions, HasForms, HasTable
 {
+    protected static ?int $navigationSort = 160;
+
     use InteractsWithActions;
     use InteractsWithForms;
     use InteractsWithTable;
@@ -38,7 +40,7 @@ class Updates extends Page implements HasActions, HasForms, HasTable
 
     public static function getNavigationGroup(): ?string
     {
-        return __('System');
+        return __('System management');
     }
 
     public static function getNavigationLabel(): string

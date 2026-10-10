@@ -88,16 +88,20 @@ class EpayTest extends TestCase
         $this->assertSame(0, $this->invoice->transactions()->count());
     }
 
-    public function test_changed_balance_and_cancelled_invoice_are_rejected(): void
+    public function test_changed_balance_is_rejected_but_cancelled_invoice_payment_is_credited(): void
     {
+        config(['settings.credits_enabled' => true]);
         $params = $this->notification();
         ExtensionHelper::addPayment($this->invoice, null, 1, isCreditTransaction: true);
         $this->get('/extensions/epay/notify?' . http_build_query($params))->assertStatus(400);
         $this->invoice->refresh();
         $params = $this->notification();
         $this->invoice->update(['status' => 'cancelled']);
-        $this->get('/extensions/epay/notify?' . http_build_query($params))->assertStatus(400);
-        $this->assertSame(1, $this->invoice->transactions()->count());
+        $this->get('/extensions/epay/notify?' . http_build_query($params))->assertOk()->assertContent('success');
+        $this->get('/extensions/epay/notify?' . http_build_query($params))->assertOk()->assertContent('success');
+        $this->assertSame(2, $this->invoice->transactions()->count());
+        $this->assertTrue($this->invoice->transactions()->where('transaction_id', '20261009000001')->first()->credited_to_balance);
+        $this->assertEquals(18.90, $this->invoice->user->credits()->where('currency_code', 'CNY')->value('amount'));
     }
 
     public function test_platform_transaction_cannot_be_reused_on_another_invoice(): void

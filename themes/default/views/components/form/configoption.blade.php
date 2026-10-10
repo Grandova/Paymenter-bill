@@ -1,3 +1,4 @@
+@props(['config', 'name', 'showPriceTag' => false, 'plan' => null, 'currency' => null])
 <div class="flex flex-col gap-1">
     @switch($config->type)
         @case('select')
@@ -10,7 +11,7 @@
 
         @case('slider')
             <div x-data="{
-                options: @js($config->children->map(fn($child) => ['option' => $child->name, 'value' => $child->id, 'price' => ($showPriceTag && $child->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit)->available) ? (string)$child->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit) : ''])),
+                options: @js($config->children->map(fn($child) => ['option' => $child->name, 'value' => $child->id, 'price' => ($showPriceTag && $child->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit, currency: $currency)->available) ? (string)$child->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit, currency: $currency) : ''])),
                 showPriceTag: @js($showPriceTag),
                 selectedOption: 0,
                 backendOption: $wire.entangle('{{ $name }}').live,
@@ -66,7 +67,7 @@
                                 </span>
                                 @if($showPriceTag)
                                     <span class="text-sm font-semibold hidden lg:inline">
-                                        {{ ($showPriceTag && $child->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit)->available) ? $child->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit) : '' }}
+                                        {{ ($showPriceTag && $child->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit, currency: $currency)->available) ? $child->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit, currency: $currency) : '' }}
                                     </span>
                                 @endif
                             </button>
@@ -85,11 +86,12 @@
         @case('color')
         @case('file')
             <x-form.input name="{{ $name }}" :type="$config->type" :label="__($config->label ?? $config->name)"
-                :placeholder="$config->default ?? ''" :required="$config->required ?? false" wire:model.live="{{ $name }}" :placeholder="$config->placeholder ?? ''" />
+                :placeholder="$config->default ?? ''" :required="$config->required ?? false" :min="$config->min_value ?? null"
+                :max="$config->max_value ?? null" wire:model.live="{{ $name }}" :placeholder="$config->placeholder ?? ''" />
         @break
 
         @case('checkbox')
-            <x-form.checkbox name="{{ $name }}" type="checkbox" :label="__($config->label ?? $config->name) . (($showPriceTag && $config->children->first()->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit)->available) ? ' - ' . $config->children->first()->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit) : '')"
+            <x-form.checkbox name="{{ $name }}" type="checkbox" :label="__($config->label ?? $config->name) . (($showPriceTag && $config->children->first()->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit, currency: $currency)->available) ? ' - ' . $config->children->first()->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit, currency: $currency) : '')"
                 :required="$config->required ?? false" wire:model.live="{{ $name }}" />
         @break
 

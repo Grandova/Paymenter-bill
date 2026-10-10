@@ -61,6 +61,23 @@
                         @endif
                     </div>
                     @include('services.partials.billing-agreement')
+                    @if(config('settings.credits_enabled') && $service->plan->type === 'recurring' && in_array($service->status, ['active', 'suspended'], true) && !$service->cancellation()->exists())
+                    <div class="flex items-center gap-3 text-base">
+                        <span>{{ __('services.auto_renew') }}:</span>
+                        <span class="text-base/50">{{ $autoRenew ? __('services.auto_renew_on') : __('services.auto_renew_off') }}</span>
+                        @if($autoRenew)
+                        <button type="button" class="text-primary underline underline-offset-2" wire:click="toggleAutoRenew" wire:loading.attr="disabled" wire:target="toggleAutoRenew">
+                            <span wire:loading.remove wire:target="toggleAutoRenew">{{ __('services.disable_auto_renew') }}</span>
+                            <x-loading target="toggleAutoRenew" />
+                        </button>
+                        @else
+                        <button type="button" class="text-primary underline underline-offset-2" x-on:click="$store.confirmation.confirm({ title: @js(__('services.enable_auto_renew')), message: @js(__('services.auto_renew_confirm')), confirmText: @js(__('common.confirm')), cancelText: @js(__('common.cancel')), callback: () => $wire.toggleAutoRenew() })">
+                            {{ __('services.enable_auto_renew') }}
+                        </button>
+                        @endif
+                    </div>
+                    <p class="text-sm text-base/50">{{ __('services.auto_renew_description') }}</p>
+                    @endif
                     <br>
                     @foreach ($fields as $field)
                     <div class="flex items-center text-base">
@@ -74,6 +91,13 @@
             <div>
                 <h4 class="text-lg font-semibold">{{ __('services.actions') }}:</h4>
                 <div class="mt-2 flex flex-row gap-2 flex-wrap">
+                    @if($service->plan->type === 'recurring' && in_array($service->status, ['active', 'suspended'], true) && !$service->cancellation()->exists())
+                    @if(!$hasPendingInvoice)
+                    <x-button.primary class="h-fit !w-fit" wire:click="$set('showRenewal', true)">
+                        {{ __('services.renew_now') }}
+                    </x-button.primary>
+                    @endif
+                    @endif
                     @if($service->upgradable)
                     <a href="{{ route('services.upgrade', $service->id) }}">
                         <x-button.primary class="h-fit !w-fit">
@@ -93,6 +117,41 @@
                             }}</span>
                         <x-loading target="$set('showCancel', true)" />
                     </x-button.danger>
+                    @endif
+                    @if($showRenewal)
+                    <x-modal open="true" title="{{ __('services.renew_now') }}" width="max-w-2xl">
+                        <div class="space-y-5">
+                            <p class="text-sm text-base/60">{{ __('services.renewal_cycle_description') }}</p>
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                @foreach($renewalPlans as $plan)
+                                <label class="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-neutral p-4 @if((int) $renewalPlanId === (int) $plan->id) border-primary bg-primary/5 @endif">
+                                    <span class="flex items-center gap-3">
+                                        <input type="radio" wire:model.live="renewalPlanId" value="{{ $plan->id }}" />
+                                        <span>{{ __('services.every_period', ['period' => $plan->billing_period > 1 ? $plan->billing_period : '', 'unit' => trans_choice(__('services.billing_cycles.' . $plan->billing_unit), $plan->billing_period)]) }}</span>
+                                    </span>
+                                    <span class="font-semibold">{{ $plan->price($service->currency_code)->formatted->price }}</span>
+                                </label>
+                                @endforeach
+                            </div>
+                            <div class="flex items-center justify-between border-t border-neutral pt-4">
+                                <span class="font-medium">{{ __('services.renewal_amount') }}</span>
+                                <span class="text-xl font-semibold">{{ $renewalPrice->formatted->total }}</span>
+                            </div>
+                            @error('renewalPlanId')<p class="text-sm text-danger" role="alert">{{ $message }}</p>@enderror
+                            <div class="flex justify-end gap-3">
+                                <button type="button" wire:click="$set('showRenewal', false)" class="rounded-md border border-neutral px-4 py-2">{{ __('common.cancel') }}</button>
+                                <x-button.primary class="!w-fit" wire:click="renewNow" wire:loading.attr="disabled" wire:target="renewNow">
+                                    <span wire:loading.remove wire:target="renewNow">{{ __('services.renew_now') }}</span>
+                                    <x-loading target="renewNow" />
+                                </x-button.primary>
+                            </div>
+                        </div>
+                        <x-slot name="closeTrigger">
+                            <button type="button" wire:click="$set('showRenewal', false)" @click="open = false" class="text-primary-100">
+                                <x-ri-close-fill class="size-6" />
+                            </button>
+                        </x-slot>
+                    </x-modal>
                     @endif
                     @if($showCancel)
                     <x-modal open="true"

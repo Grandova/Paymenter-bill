@@ -4,7 +4,9 @@ namespace App\Admin\Resources\ServerResource\Pages;
 
 use App\Admin\Resources\ServerResource;
 use App\Helpers\ExtensionHelper;
+use App\Models\Product;
 use Filament\Actions\DeleteAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
@@ -16,7 +18,20 @@ class EditServer extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make()->before(fn ($record) => ExtensionHelper::call($record, 'disabled', [$record], mayFail: true)),
+            DeleteAction::make()->before(function ($record, DeleteAction $action) {
+                if (Product::where('server_id', $record->id)->exists()) {
+                    Notification::make()
+                        ->title(__('Whoops!'))
+                        ->body(__('You cannot delete this server because it is assigned to one or more products. Reassign those products first.'))
+                        ->danger()
+                        ->send();
+                    $action->cancel();
+
+                    return;
+                }
+
+                ExtensionHelper::call($record, 'disabled', [$record], mayFail: true);
+            }),
         ];
     }
 

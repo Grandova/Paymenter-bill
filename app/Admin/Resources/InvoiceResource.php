@@ -10,6 +10,7 @@ use App\Admin\Resources\InvoiceResource\Pages\ListInvoices;
 use App\Admin\Resources\InvoiceResource\Pages\ViewInvoice;
 use App\Admin\Resources\InvoiceResource\RelationManagers\AdjustmentNotesRelationManager;
 use App\Admin\Resources\InvoiceResource\RelationManagers\TransactionsRelationManager;
+use App\Enums\InvoiceTransactionStatus;
 use App\Models\Currency;
 use App\Models\Invoice;
 use App\Models\Service;
@@ -23,14 +24,17 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class InvoiceResource extends Resource
 {
@@ -139,6 +143,18 @@ class InvoiceResource extends Resource
             ]);
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['currency', 'transactions', 'items', 'adjustmentNotes', 'user'])
+            ->withExists([
+                'transactions as has_in_flight_transactions' => fn (Builder $query) => $query->whereIn('status', [
+                    InvoiceTransactionStatus::Succeeded->value,
+                    InvoiceTransactionStatus::Processing->value,
+                ]),
+            ]);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -161,6 +177,7 @@ class InvoiceResource extends Resource
                     ->color(fn (string $state): string => match ($state) {
                         'paid' => 'success',
                         'pending' => 'warning',
+                        'draft' => 'gray',
                         default => 'danger',
                     })
                     ->searchable()
@@ -169,6 +186,10 @@ class InvoiceResource extends Resource
                     ->label(__('Issued At'))
                     ->date()
                     ->searchable()
+                    ->sortable(),
+                TextColumn::make('due_at')
+                    ->label(__('Due At'))
+                    ->date()
                     ->sortable(),
                 TextColumn::make('formattedTotal')
                     ->label(__('Total')),
@@ -185,13 +206,20 @@ class InvoiceResource extends Resource
                     ->options([
                         'paid' => __('Paid'),
                         'pending' => __('Pending'),
+                        'draft' => __('Draft'),
                         'cancelled' => __('Cancelled'),
                     ]),
+                Filter::make('overdue')
+                    ->label(__('Overdue invoices'))
+                    ->query(fn (Builder $query): Builder => $query
+                        ->where('status', Invoice::STATUS_PENDING)
+                        ->whereDate('due_at', '<', today())),
             ])
             ->recordActions([
                 ViewAction::make()
-                    ->visible(fn (): bool => config('settings.immutable_invoices_enabled', false)),
-                EditAction::make(),
+                    ->visible(fn (Invoice $record): bool => !$record->canBeEdited() || (config('settings.immutable_invoices_enabled', false) && $record->status !== Invoice::STATUS_DRAFT)),
+                EditAction::make()
+                    ->visible(fn (Invoice $record): bool => $record->canBeEdited() && (!config('settings.immutable_invoices_enabled', false) || $record->status === Invoice::STATUS_DRAFT)),
                 Action::make('cancel')
                     ->label(__('Cancel'))
                     ->icon('heroicon-o-x-circle')
@@ -203,12 +231,24 @@ class InvoiceResource extends Resource
                             ->required(),
                     ])
                     ->action(function (Invoice $record, array $data) {
-                        $record->update([
-                            'status' => Invoice::STATUS_CANCELLED,
-                            'cancellation_reason' => $data['cancellation_reason'],
-                        ]);
+                        DB::transaction(function () use ($record, $data): void {
+                            $invoice = Invoice::query()->lockForUpdate()->findOrFail($record->id);
+                            if (!$invoice->canBeEdited() || in_array($invoice->status, [Invoice::STATUS_CANCELLED, Invoice::STATUS_PAID], true)) {
+                                Notification::make()->title(__('invoices.invoice_cancel_blocked'))->danger()->send();
+
+                                return;
+                            }
+
+                            $invoice->update([
+                                'status' => Invoice::STATUS_CANCELLED,
+                                'cancellation_reason' => $data['cancellation_reason'],
+                            ]);
+                            $invoice->cancelPendingServices();
+                        });
                     })
-                    ->visible(fn (Invoice $record): bool => auth()->user()->can('update', Invoice::class) && !in_array($record->status, [Invoice::STATUS_CANCELLED, Invoice::STATUS_PAID])),
+                    ->visible(fn (Invoice $record): bool => auth()->user()->can('update', Invoice::class)
+                        && $record->canBeEdited()
+                        && !in_array($record->status, [Invoice::STATUS_CANCELLED, Invoice::STATUS_PAID])),
             ]);
     }
 

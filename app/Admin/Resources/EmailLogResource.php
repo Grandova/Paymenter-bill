@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class EmailLogResource extends Resource
 {
+    protected static ?int $navigationSort = 40;
+
     protected static ?string $model = EmailLog::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-mail-send-line';
@@ -30,7 +32,7 @@ class EmailLogResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Other');
+        return __('System management');
     }
 
     public static function infolist(Schema $schema): Schema

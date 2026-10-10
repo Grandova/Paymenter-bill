@@ -20,6 +20,8 @@ use Paymenter\Extensions\Others\Affiliates\Models\Affiliate;
 
 class AffiliateResource extends Resource
 {
+    protected static ?int $navigationSort = 70;
+
     protected static ?string $model = Affiliate::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-hand-coin-line';
@@ -33,7 +35,7 @@ class AffiliateResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Administration');
+        return __('Customers and finance');
     }
 
     public static function form(Schema $schema): Schema

@@ -23,6 +23,8 @@ use Laravel\Passport\ClientRepository;
 
 class OauthClientResource extends Resource
 {
+    protected static ?int $navigationSort = 130;
+
     protected static ?string $model = OauthClient::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-lock-2-line';
@@ -36,7 +38,7 @@ class OauthClientResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Other');
+        return __('System management');
     }
 
     public static function form(Schema $schema): Schema

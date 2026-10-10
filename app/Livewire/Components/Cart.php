@@ -2,8 +2,9 @@
 
 namespace App\Livewire\Components;
 
-use App\Classes\Cart as ClassesCart;
 use App\Livewire\Component;
+use App\Models\Cart as CartModel;
+use Illuminate\Support\Facades\Cookie;
 use Livewire\Attributes\On;
 
 class Cart extends Component
@@ -12,7 +13,7 @@ class Cart extends Component
 
     public function mount()
     {
-        $this->cartCount = ClassesCart::items()->count();
+        $this->onCartUpdated();
         if ($this->cartCount === 0) {
             $this->skipRender();
         }
@@ -21,7 +22,9 @@ class Cart extends Component
     #[On('cartUpdated')]
     public function onCartUpdated()
     {
-        $this->cartCount = ClassesCart::items()->count();
+        $this->cartCount = Cookie::has('cart')
+            ? CartModel::where('ulid', Cookie::get('cart'))->withCount('items')->value('items_count') ?? 0
+            : 0;
     }
 
     public function render()

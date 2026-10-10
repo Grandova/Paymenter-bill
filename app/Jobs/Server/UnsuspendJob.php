@@ -29,6 +29,11 @@ class UnsuspendJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $this->service->refresh();
+        if ($this->service->status !== Service::STATUS_ACTIVE) {
+            return;
+        }
+
         try {
             ExtensionHelper::unsuspendServer($this->service);
         } catch (Exception $e) {

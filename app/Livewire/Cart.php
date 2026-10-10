@@ -26,8 +26,6 @@ class Cart extends Component
 
     public $coupon;
 
-    public $use_credits = true;
-
     public $tos;
 
     public function mount()
@@ -90,7 +88,12 @@ class Cart extends Component
 
     public function updateQuantity($index, $quantity)
     {
-        ClassesCart::updateQuantity($index, $quantity);
+        try {
+            ClassesCart::updateQuantity($index, $quantity);
+        } catch (DisplayException $e) {
+            return $this->notify($e->getMessage(), 'error');
+        }
+
         $this->updateTotal();
     }
 
@@ -125,17 +128,63 @@ class Cart extends Component
                 return $this->notify(__('This coupon can no longer be used'), 'error');
             }
             // Lock the orderproducts
-            foreach ($cart->items as $item) {
-                // An item without a price row in the cart's currency would otherwise check out free.
-                if (!$item->price->available) {
-                    throw new DisplayException(__('product.not_available', ['product' => $item->product->name]));
-                }
-
+            foreach ($cart->items->sortBy('product_id') as $item) {
                 // Make sure we have the latest product data and lock it
                 $product = Product::where('id', $item->product->id)->lockForUpdate()->first();
+                if ($product->hidden) {
+                    throw new DisplayException(__('Product is no longer available.'));
+                }
+
+                $plan = $product->plans()->with('prices.currency')->whereKey($item->plan_id)->first();
+                if (!$plan || !$plan->price($cart->currency_code)->available) {
+                    throw new DisplayException(__('product.config_changed'));
+                }
+
+                $item->setRelation('product', $product);
+                $item->setRelation('plan', $plan);
+                unset($item->price);
+                $configOptions = $product->configOptions()->with('children')->get()->keyBy('id');
+                $savedConfigOptions = $item->config_options ?? [];
+                $savedOptions = collect($savedConfigOptions)->keyBy('option_id');
+                if ($savedOptions->keys()->diff($configOptions->keys())->isNotEmpty() || $savedOptions->count() !== count($savedConfigOptions)) {
+                    throw new DisplayException(__('product.config_changed'));
+                }
+
+                foreach ($configOptions as $option) {
+                    $savedOption = $savedOptions->get($option->id);
+                    if (!$savedOption) {
+                        if ($option->type !== 'checkbox') {
+                            throw new DisplayException(__('product.config_changed'));
+                        }
+
+                        continue;
+                    }
+                    $savedOption = (object) $savedOption;
+                    if ($option->type !== ($savedOption->option_type ?? null)) {
+                        throw new DisplayException(__('product.config_changed'));
+                    }
+                    if (in_array($option->type, ['text', 'number'])
+                        && (!isset($savedOption->value) || $savedOption->value === '' || ($option->type === 'number' && !is_numeric($savedOption->value)))) {
+                        throw new DisplayException(__('product.config_changed'));
+                    }
+                    if ($option->type !== 'checkbox' && !in_array($option->type, ['text', 'number']) && !$option->children->contains('id', $savedOption->value ?? null)) {
+                        throw new DisplayException(__('product.config_changed'));
+                    }
+                    if ($option->type === 'checkbox' && isset($savedOption->value) && !$option->children->contains('id', $savedOption->value)) {
+                        throw new DisplayException(__('product.config_changed'));
+                    }
+                }
+
+                // An item without a price row in the cart's currency would otherwise check out free.
+                if (!$item->price->available) {
+                    throw new DisplayException(__('product.not_available', ['product' => $product->name]));
+                }
 
                 if ($product->per_user_limit > 0) {
-                    $existingServiceCount = $user->services()->where('product_id', $product->id)->count();
+                    $existingServiceCount = $user->services()
+                        ->where('product_id', $product->id)
+                        ->where('status', '!=', Service::STATUS_CANCELLED)
+                        ->sum('quantity');
                     $cartQuantityForProduct = $cart->items->filter(fn ($it) => $it->product->id == $product->id)->sum(fn ($it) => $it->quantity);
 
                     if ($existingServiceCount >= $product->per_user_limit || ($cartQuantityForProduct + $existingServiceCount) > $product->per_user_limit) {
@@ -151,6 +200,9 @@ class Cart extends Component
                     $product->save();
                 }
             }
+
+            $this->updateTotal();
+
             // Create the order
             $order = new Order([
                 'user_id' => $user->id,
@@ -187,7 +239,7 @@ class Cart extends Component
                     'plan_id' => $item->plan->id,
                     'price' => $price,
                     'quantity' => $item->quantity,
-                    'coupon_id' => $cart->coupon_id,
+                    'coupon_id' => $cart->coupon && ($cart->coupon->products->isEmpty() || $cart->coupon->products->contains('id', $item->product->id)) ? $cart->coupon_id : null,
                 ]);
 
                 foreach ($item->checkout_config as $key => $value) {
@@ -234,12 +286,13 @@ class Cart extends Component
                     ]);
                 } else {
                     // We'll make the service active immediately
-                    if ($service->product->server) {
-                        CreateJob::dispatch($service);
-                    }
                     $service->status = Service::STATUS_ACTIVE;
                     $service->expires_at = $service->calculateNextDueDate();
                     $service->save();
+
+                    if ($service->product->server) {
+                        CreateJob::dispatch($service)->afterCommit();
+                    }
                 }
             }
 

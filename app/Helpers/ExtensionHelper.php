@@ -7,6 +7,7 @@ use App\Classes\FilamentInput;
 use App\Enums\AdjustmentNoteType;
 use App\Enums\InvoiceTransactionStatus;
 use App\Models\BillingAgreement;
+use App\Models\Credit;
 use App\Models\Extension;
 use App\Models\Gateway;
 use App\Models\Invoice;
@@ -407,16 +408,20 @@ class ExtensionHelper
         return self::getExtension('gateway', $gateway->extension, $gateway->settings)->charge($invoice, $invoice->remaining, $billingAgreement);
     }
 
-    public static function getBillingAgreementGateways()
+    public static function getBillingAgreementGateways($currency = null, $total = 0, $items = [])
     {
         $gateways = [];
 
         foreach (Gateway::with('settings')->get() as $gateway) {
-            if (self::hasFunction($gateway, 'supportsBillingAgreements')) {
-                if (self::getExtension('gateway', $gateway->extension, $gateway->settings)->supportsBillingAgreements()) {
-                    $gateways[] = $gateway;
-                }
+            $extension = self::getExtension('gateway', $gateway->extension, $gateway->settings);
+            if (!method_exists($extension, 'supportsBillingAgreements') || !$extension->supportsBillingAgreements()) {
+                continue;
             }
+            if ($currency !== null && method_exists($extension, 'canUseGateway') && !$extension->canUseGateway($total, $currency, 'invoice', $items)) {
+                continue;
+            }
+
+            $gateways[] = $gateway;
         }
 
         return $gateways;
@@ -473,6 +478,10 @@ class ExtensionHelper
         }
 
         $transaction = DB::transaction(function () use ($invoice, $gateway, $amount, $fee, $transactionId, $status, $isCreditTransaction) {
+            if ($transactionId && $gateway) {
+                $gateway = Gateway::query()->lockForUpdate()->findOrFail($gateway->id);
+            }
+
             // Lock the invoice for update to prevent race conditions
             $invoice = Invoice::where('id', $invoice instanceof Invoice ? $invoice->id : $invoice)->lockForUpdate()->firstOrFail();
 
@@ -494,6 +503,18 @@ class ExtensionHelper
             ];
             if ($fee !== null) {
                 $updateData['fee'] = $fee;
+            }
+
+            $existingTransaction = InvoiceTransaction::query()
+                ->where('gateway_id', $gateway?->id)
+                ->where('transaction_id', $transactionId)
+                ->lockForUpdate()
+                ->first();
+            if ($existingTransaction && $existingTransaction->invoice_id !== $invoice->id) {
+                throw new \InvalidArgumentException(__('invoices.transaction_already_used'));
+            }
+            if ($existingTransaction?->status === InvoiceTransactionStatus::Succeeded) {
+                return $existingTransaction;
             }
 
             return $invoice->transactions()->updateOrCreate(
@@ -568,14 +589,21 @@ class ExtensionHelper
         }
 
         return DB::transaction(function () use ($transaction, $gatewayInstance, $amount) {
+            $invoice = Invoice::whereKey($transaction->invoice_id)->lockForUpdate()->firstOrFail();
             $transaction = InvoiceTransaction::whereKey($transaction->id)->lockForUpdate()->firstOrFail();
 
-            $refundable = $transaction->amount - $transaction->refunded_amount;
+            if ($transaction->status !== InvoiceTransactionStatus::Succeeded) {
+                throw new \InvalidArgumentException(__('invoices.refund_successful_only'));
+            }
+
+            $refundable = $transaction->amount - $transaction->refunded_amount - $transaction->credited_amount;
             if ($amount > $refundable) {
                 throw new \InvalidArgumentException(
                     "Refund amount ({$amount}) exceeds refundable amount ({$refundable}) for this transaction."
                 );
             }
+
+            self::deductRefundedCreditDeposit($invoice, $amount);
 
             $success = $gatewayInstance->refund($transaction, $amount);
 
@@ -599,17 +627,37 @@ class ExtensionHelper
         }
 
         DB::transaction(function () use ($transaction, $amount) {
+            $invoice = Invoice::whereKey($transaction->invoice_id)->lockForUpdate()->firstOrFail();
             $transaction = InvoiceTransaction::whereKey($transaction->id)->lockForUpdate()->firstOrFail();
 
-            $refundable = $transaction->amount - $transaction->refunded_amount;
+            if ($transaction->status !== InvoiceTransactionStatus::Succeeded) {
+                throw new \InvalidArgumentException(__('invoices.refund_successful_only'));
+            }
+
+            $refundable = $transaction->amount - $transaction->refunded_amount - $transaction->credited_amount;
             if ($amount > $refundable) {
                 throw new \InvalidArgumentException(
                     "Refund amount ({$amount}) exceeds refundable amount ({$refundable}) for this transaction."
                 );
             }
 
+            self::deductRefundedCreditDeposit($invoice, $amount);
             self::recordRefund($transaction, $amount);
         });
+    }
+
+    private static function deductRefundedCreditDeposit(Invoice $invoice, float $amount): void
+    {
+        if (!$invoice->items()->where('reference_type', Credit::class)->exists()) {
+            return;
+        }
+
+        $user = $invoice->user()->lockForUpdate()->firstOrFail();
+        $spent = Credit::spend($user, $invoice->currency_code, $amount, partial: false, type: 'refund', reference: $invoice);
+
+        if ($spent < $amount) {
+            throw new \RuntimeException(__('invoices.refund_credit_balance_insufficient'));
+        }
     }
 
     /**

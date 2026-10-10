@@ -69,7 +69,7 @@ class LocalizationTest extends TestCase
         app()->setLocale('zh');
 
         $this->assertSame('用户', UserResource::getModelLabel());
-        $this->assertSame('客户与支持', UserResource::getNavigationGroup());
+        $this->assertSame('客户与财务', UserResource::getNavigationGroup());
         $this->assertSame('优惠券', CouponResource::getPluralModelLabel());
         $this->assertSame('名字', TextInput::make('first_name')->getLabel());
         $this->assertSame('创建时间', TextColumn::make('created_at')->getLabel());

@@ -27,6 +27,7 @@ class Coupon extends Model implements Auditable
         'expires_at' => 'datetime',
         'max_uses' => 'integer',
         'max_uses_per_user' => 'integer',
+        'recurring' => 'integer',
         'value' => 'float',
     ];
 
@@ -54,9 +55,18 @@ class Coupon extends Model implements Auditable
             return false;
         }
 
+        return $this->usageCount($userId) >= $this->max_uses_per_user;
+    }
+
+    public function usageCount($userId = null): int
+    {
         return $this->services()
-            ->where('user_id', $userId)
-            ->count() >= $this->max_uses_per_user;
+            ->where(function ($query) {
+                $query->where('status', '!=', Service::STATUS_CANCELLED)
+                    ->orWhereHas('invoices', fn ($query) => $query->where('status', Invoice::STATUS_PAID));
+            })
+            ->when($userId !== null, fn ($query) => $query->where('user_id', $userId))
+            ->count();
     }
 
     public function calculateDiscount($price, $type = 'price')

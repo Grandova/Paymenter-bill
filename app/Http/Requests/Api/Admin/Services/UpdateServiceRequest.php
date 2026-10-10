@@ -4,6 +4,8 @@ namespace App\Http\Requests\Api\Admin\Services;
 
 use App\Http\Requests\Api\Admin\AdminApiRequest;
 use App\Models\Plan;
+use App\Models\Product;
+use Illuminate\Validation\Validator;
 
 class UpdateServiceRequest extends AdminApiRequest
 {
@@ -17,13 +19,6 @@ class UpdateServiceRequest extends AdminApiRequest
                 'sometimes',
                 'required',
                 'exists:plans,id',
-                function ($attribute, $value, $fail) {
-                    $productId = $this->input('product_id');
-                    if ($productId && !Plan::where('id', $value)->where('priceable_type', Product::class)->where('priceable_id', $productId)->exists()) {
-                        // Check if the plan belongs to the specified product
-                        $fail(__('The selected plan does not belong to the specified product.'));
-                    }
-                },
             ],
             'user_id' => 'sometimes|required|exists:users,id',
             /**
@@ -45,5 +40,29 @@ class UpdateServiceRequest extends AdminApiRequest
             'subscription_id' => 'sometimes|nullable|string|max:255',
             'order_id' => 'sometimes|nullable|exists:orders,id',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            if (!$this->exists('product_id') && !$this->exists('plan_id') && !$this->exists('currency_code')) {
+                return;
+            }
+
+            $service = $this->route('service');
+            $productId = $this->input('product_id', $service->product_id);
+            $planId = $this->input('plan_id', $service->plan_id);
+            $currencyCode = $this->input('currency_code', $service->currency_code);
+            $plan = Plan::whereKey($planId)
+                ->where('priceable_type', Product::class)
+                ->where('priceable_id', $productId)
+                ->first();
+
+            if (!$plan) {
+                $validator->errors()->add('plan_id', __('The selected plan does not belong to the specified product.'));
+            } elseif ($plan->type !== 'free' && !$plan->prices()->where('currency_code', $currencyCode)->exists()) {
+                $validator->errors()->add('plan_id', __('The selected plan is not available in the specified currency.'));
+            }
+        });
     }
 }

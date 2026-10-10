@@ -17,6 +17,26 @@
                         {{ $item->product->name }}
                     </h2>
                     <p class="text-sm text-muted">{{ $item->plan->name }}</p>
+                    @if ($item->plan->type === 'recurring')
+                    @php
+                        $renewalPrice = $item->price->price;
+                        if ($item->cart->coupon && ($item->cart->coupon->recurring === null || (int) $item->cart->coupon->recurring === 1)) {
+                            $renewalPrice = $item->price->original_price;
+                        }
+                    @endphp
+                    <p class="text-sm text-muted">
+                        {{ __('services.price_every_period', [
+                            'price' => $item->price->format($renewalPrice * $item->quantity),
+                            'period' => $item->plan->billing_period > 1 ? $item->plan->billing_period : '',
+                            'unit' => strtolower(trans_choice(__('services.billing_cycles.' . $item->plan->billing_unit), $item->plan->billing_period)),
+                        ]) }}
+                    </p>
+                    @elseif ($item->plan->type === 'one-time')
+                    <p class="text-sm text-muted">{{ __('services.price_one_time', ['price' => $item->price->format($item->price->price * $item->quantity)]) }}</p>
+                    @endif
+                    @if ($item->price->has_setup_fee)
+                    <p class="text-sm text-muted">+ {{ $item->price->format($item->price->setup_fee * $item->quantity) }} {{ __('product.setup_fee') }}</p>
+                    @endif
                     <p class="text-sm text-muted">
                         @foreach ($item->config_options as $option)
                         {{ $option['option_name'] }}: {{ $option['value_name'] }}<br>

@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Auth;
 
 class HttpLogResource extends Resource
 {
+    protected static ?int $navigationSort = 100;
+
     protected static ?string $model = DebugLog::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-external-link-line';
@@ -30,7 +32,7 @@ class HttpLogResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Debug');
+        return __('System management');
     }
 
     public static function getEloquentQuery(): Builder

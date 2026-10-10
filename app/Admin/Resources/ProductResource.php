@@ -12,6 +12,8 @@ use App\Models\Product;
 use App\Models\Server;
 use Exception;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\FileUpload;
@@ -32,6 +34,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
@@ -40,6 +43,8 @@ use Livewire\Component;
 
 class ProductResource extends Resource
 {
+    protected static ?int $navigationSort = 10;
+
     protected static ?string $model = Product::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-instance-line';
@@ -55,7 +60,12 @@ class ProductResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Products and services');
+        return __('Business management');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Product management');
     }
 
     public static function form(Schema $schema): Schema
@@ -65,7 +75,7 @@ class ProductResource extends Resource
                 Tabs::make('Tabs')
                     ->persistTabInQueryString()
                     ->tabs([
-                        Tab::make('General')->label(__('General'))
+                        Tab::make('General')->label(__('Product information'))
                             ->columns(2)
                             ->schema([
                                 TextInput::make('name')
@@ -79,9 +89,24 @@ class ProductResource extends Resource
 
                                         $set('slug', Str::slug($state));
                                     }),
+                                Select::make('category_id')
+                                    ->label(__('Product groups'))
+                                    ->relationship('category', 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->createOptionForm(fn (Schema $schema) => CategoryResource::form($schema))
+                                    ->createOptionAction(fn (Action $action) => $action->authorize(fn () => CategoryResource::canCreate()))
+                                    ->required(),
                                 TextInput::make('slug')->required()->unique(ignoreRecord: true),
-                                TextInput::make('stock')->integer()->nullable(),
-                                TextInput::make('per_user_limit')->integer()->nullable(),
+                                TextInput::make('sort')
+                                    ->label(__('Sort order'))
+                                    ->integer()
+                                    ->minValue(0)
+                                    ->maxValue(255)
+                                    ->default(0)
+                                    ->required(),
+                                TextInput::make('stock')->integer()->minValue(0)->nullable(),
+                                TextInput::make('per_user_limit')->integer()->minValue(0)->nullable(),
                                 Select::make('allow_quantity')->options([
                                     'disabled' => __('No'),
                                     'separated' => __('Separated'),
@@ -104,33 +129,15 @@ class ProductResource extends Resource
                                     ->image()
                                     ->disk('public')
                                     ->acceptedFileTypes(['image/*']),
-                                Select::make('category_id')
-                                    ->relationship('category', 'name')
-                                    ->searchable()
-                                    ->preload()
-                                    ->createOptionForm(fn (Schema $schema) => CategoryResource::form($schema))
-                                    ->required(),
                             ]),
-                        Tab::make('Pricing')->label(__('Pricing'))
-                            ->schema([self::plan()]),
-
-                        Tab::make('Upgrades')->label(__('Upgrades'))
-                            ->schema([
-                                // Select input for the products this product can upgrade to (hasmany relationship)
-                                Select::make('upgrades')
-                                    ->label(__('Upgrades'))
-                                    ->relationship('upgrades', 'name', ignoreRecord: true)
-                                    ->multiple()
-                                    ->preload()
-                                    ->placeholder(__('Select the products that this product can upgrade to')),
-                            ]),
-
-                        Tab::make('Server')->label(__('Server'))
+                        Tab::make('Server')->label(__('Automation and resources'))
                             ->schema([
                                 Select::make('server_id')
                                     ->relationship('server', 'name')
+                                    ->label(__('Automation interface'))
                                     ->searchable()
                                     ->preload()
+                                    ->helperText(__('Changing the server affects existing services tied to this product. Create a new product to keep existing services on their current server.'))
                                     ->hintAction(
                                         Action::make('refresh')
                                             ->label(__('Refresh'))
@@ -170,6 +177,30 @@ class ProductResource extends Resource
                                         }
                                     ),
 
+                            ]),
+
+                        Tab::make('Pricing')->label(__('Billing cycle and price'))
+                            ->schema([self::plan()]),
+
+                        Tab::make('Sales options')->label(__('Purchase options'))
+                            ->schema([
+                                Select::make('configurableOptions')
+                                    ->label(__('Config Options'))
+                                    ->relationship('configurableOptions', 'name')
+                                    ->multiple()
+                                    ->searchable()
+                                    ->preload()
+                                    ->placeholder(__('Select the configuration options customers can choose')),
+                            ]),
+
+                        Tab::make('Upgrades')->label(__('Upgrade settings'))
+                            ->schema([
+                                Select::make('upgrades')
+                                    ->label(__('Upgrades'))
+                                    ->relationship('upgrades', 'name', ignoreRecord: true)
+                                    ->multiple()
+                                    ->preload()
+                                    ->placeholder(__('Select the products that this product can upgrade to')),
                             ]),
                     ]),
             ])->columns(1);
@@ -230,16 +261,47 @@ class ProductResource extends Resource
                         }
                     })
                     ->placeholder(__('Select the type of the price'))
-                    ->default('free'),
+                    ->default('recurring'),
 
+                Select::make('billing_cycle')
+                    ->label(__('Common billing cycle'))
+                    ->options([
+                        'month:1' => __('Monthly'),
+                        'month:3' => __('Quarterly'),
+                        'month:6' => __('Semi-annually'),
+                        'year:1' => __('Annually'),
+                        'custom' => __('Custom'),
+                    ])
+                    ->dehydrated(false)
+                    ->live()
+                    ->afterStateHydrated(function (Select $component, Get $get) {
+                        $cycle = $get('billing_unit') . ':' . $get('billing_period');
+                        $component->state(in_array($cycle, ['month:1', 'month:3', 'month:6', 'year:1'], true) ? $cycle : 'custom');
+                    })
+                    ->afterStateUpdated(function (?string $state, Set $set) {
+                        if (!in_array($state, ['month:1', 'month:3', 'month:6', 'year:1'], true)) {
+                            return;
+                        }
+
+                        [$unit, $period] = explode(':', $state);
+                        $set('billing_unit', $unit);
+                        $set('billing_period', (int) $period);
+                    })
+                    ->columnSpanFull()
+                    ->hidden(fn (Get $get) => $get('type') !== 'recurring'),
                 TextInput::make('billing_period')
+                    ->integer()
+                    ->minValue(1)
                     ->required()
                     ->label(__('Time Interval'))
                     ->default(1)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(fn (Set $set) => $set('billing_cycle', 'custom'))
                     ->hidden(fn (Get $get) => $get('type') !== 'recurring'),
 
                 Select::make('billing_unit')
                     ->options([
+                        'hour' => __('Hour'),
                         'day' => __('Day'),
                         'week' => __('Week'),
                         'month' => __('Month'),
@@ -248,6 +310,8 @@ class ProductResource extends Resource
                     ->label(__('Billing period'))
                     ->required()
                     ->default('month')
+                    ->live()
+                    ->afterStateUpdated(fn (Set $set) => $set('billing_cycle', 'custom'))
                     ->hidden(fn (Get $get) => $get('type') !== 'recurring'),
                 Repeater::make('pricing')
                     ->hidden(fn (Get $get) => $get('type') === 'free')
@@ -314,23 +378,73 @@ class ProductResource extends Resource
                 TextColumn::make('name')->searchable(query: function (Builder $query, string $search): Builder {
                     return $query->where('products.name', 'like', "%{$search}%");
                 }),
-                TextColumn::make('slug'),
+                TextColumn::make('slug')->searchable(),
                 TextColumn::make('category.name')->searchable(),
+                TextColumn::make('server.name')
+                    ->label(__('Provisioning interface'))
+                    ->placeholder(__('Not assigned'))
+                    ->searchable(),
+                TextColumn::make('stock')
+                    ->label(__('Stock'))
+                    ->placeholder(__('Unlimited'))
+                    ->sortable(),
+                TextColumn::make('hidden')
+                    ->label(__('Sales status'))
+                    ->badge()
+                    ->formatStateUsing(fn (bool $state) => $state ? __('Hidden') : __('On sale'))
+                    ->color(fn (bool $state) => $state ? 'gray' : 'success')
+                    ->sortable(),
+                TextColumn::make('sort')
+                    ->label(__('Sort order'))
+                    ->sortable(),
+                TextColumn::make('per_user_limit')
+                    ->label(__('Per-user purchase limit'))
+                    ->placeholder(__('No limit'))
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('category')
                     ->relationship('category', 'name')
                     ->searchable()
                     ->preload(),
+                SelectFilter::make('server_id')
+                    ->label(__('Provisioning interface'))
+                    ->relationship('server', 'name')
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('hidden')
+                    ->label(__('Sales status'))
+                    ->options([
+                        0 => __('On sale'),
+                        1 => __('Hidden'),
+                    ]),
             ])
             ->recordActions([
                 EditAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    BulkAction::make('publish')
+                        ->label(__('Bulk publish'))
+                        ->visible(fn () => auth()->user()->hasPermission('admin.products.update'))
+                        ->authorizeIndividualRecords('update')
+                        ->requiresConfirmation()
+                        ->action(fn ($records) => $records->each(fn (Product $record) => $record->update(['hidden' => false]))),
+                    BulkAction::make('hide')
+                        ->label(__('Bulk hide'))
+                        ->visible(fn () => auth()->user()->hasPermission('admin.products.update'))
+                        ->authorizeIndividualRecords('update')
+                        ->requiresConfirmation()
+                        ->action(fn ($records) => $records->each(fn (Product $record) => $record->update(['hidden' => true]))),
+                ]),
             ])
             ->defaultSort(function (Builder $query): Builder {
                 return $query
                     ->orderBy('sort', 'asc');
             })
-            ->defaultGroup('category.name');
+            ->defaultGroup(Group::make('category.name')->label(__('Product groups')))
+            ->reorderable('sort');
     }
 
     public static function getPages(): array

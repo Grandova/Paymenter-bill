@@ -1,4 +1,13 @@
 <div class="container mt-14">
+    @php
+    $unappliedSuccessfulPayment = $invoice->transactions->contains(fn ($transaction) =>
+            $transaction->status === \App\Enums\InvoiceTransactionStatus::Succeeded &&
+            !$transaction->is_credit_transaction &&
+            !$transaction->credited_to_balance &&
+            !$transaction->applied_to_invoice
+        );
+    $hasCreditedPayments = $invoice->transactions->contains(fn ($transaction) => $transaction->credited_amount > 0);
+    @endphp
     <div @if ($checkPayment) wire:poll.5s="checkPaymentStatus" @endif>
         @if ($this->pay || $showPayModal)
         @include('invoices.partials.payment-modal')
@@ -52,10 +61,16 @@
                     <div class="text-green-500 mt-6 text-lg text-center font-semibold">
                         {{ __('invoices.paid') }}
                     </div>
+                    @if($unappliedSuccessfulPayment)
+                    <p class="text-sm text-red-600 mt-2">{{ __('invoices.late_payment_notice') }}</p>
+                    @endif
                     @elseif ($invoice->status == 'cancelled')
                     <div class="text-muted mt-6 text-lg text-center font-semibold">
-                        账单已取消
+                        {{ __('invoices.cancelled') }}
                     </div>
+                    @if($unappliedSuccessfulPayment)
+                    <p class="text-sm text-red-600 mt-2">{{ __('invoices.late_payment_notice') }}</p>
+                    @endif
                     @elseif ($invoice->status == 'pending')
                     @if($checkPayment || $invoice->transactions->where('status', \App\Enums\InvoiceTransactionStatus::Processing)->where('created_at', '>=', now()->subDays(1))->count() > 0)
                     <div class="text-yellow-500 mb-6 text-lg text-center flex items-center justify-center">
@@ -191,6 +206,11 @@
                                 <th scope="col" class="p-4 text-xs font-semibold tracking-wider text-left uppercase">
                                     {{ __('invoices.amount') }}
                                 </th>
+                                @if($hasCreditedPayments)
+                                <th scope="col" class="p-4 text-xs font-semibold tracking-wider text-left uppercase">
+                                    {{ __('invoices.credited_amount') }}
+                                </th>
+                                @endif
                                 @if($hasRefunds)
                                 <th scope="col" class="p-4 text-xs font-semibold tracking-wider text-left uppercase">
                                     {{ __('invoices.refunded_amount') }}
@@ -211,7 +231,9 @@
                                 <td class="p-4 font-normal whitespace-nowrap">{{ $transaction->transaction_id }}
                                 </td>
                                 <td class="p-4 font-normal whitespace-nowrap">
-                                    @if($transaction->is_credit_transaction)
+                                    @if($transaction->credited_to_balance)
+                                    {{ __('invoices.credited_to_account') }}
+                                    @elseif($transaction->is_credit_transaction)
                                     {{ __('invoices.paid_with_credits') }}
                                     @else
                                     {{ $transaction->gateway?->name }}
@@ -219,6 +241,11 @@
                                 </td>
                                 <td class="p-4 font-normal whitespace-nowrap">{{ $transaction->formattedAmount }}
                                 </td>
+                                @if($hasCreditedPayments)
+                                <td class="p-4 font-normal whitespace-nowrap">
+                                    {{ $transaction->credited_amount > 0 ? $transaction->formattedCreditedAmount : '-' }}
+                                </td>
+                                @endif
                                 @if($hasRefunds)
                                 <td class="p-4 font-normal whitespace-nowrap">
                                     @if($transaction->refunded_amount > 0)

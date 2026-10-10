@@ -145,6 +145,37 @@ location / {
 
 开始销售前，为产品设置人民币售价，再按 [彩虹易支付配置说明](epay-zh.md) 填写商户信息。销售 CLICD 云服务器请接着阅读 [CLICD 接入说明](clicd-zh.md)。
 
+## 9.页面加载与运行性能
+
+生产环境使用 Nginx + PHP-FPM，代码、`vendor` 和 `storage` 放在服务器的 Linux 本地磁盘。`artisan serve` 仅用于开发预览；WSL 的 `/mnt/c` 跨盘读取不适合作为生产性能基准。
+
+在面板 PHP 设置中安装并启用 OPcache，保留文件更新时间检查（`opcache.validate_timestamps=1`），修改后重启 PHP-FPM。检查网站所用 PHP 版本的配置，不能只检查终端 PHP。继续保持 Redis 缓存和第 8 步的队列进程运行，生产环境关闭 `APP_DEBUG` 及后台调试日志。
+
+安装或更新模板后，以网站运行用户在项目目录执行：
+
+```sh
+cd /www/wwwroot/bill.example.com
+/www/server/php/83/bin/php artisan view:cache
+/www/server/php/83/bin/php artisan queue:restart
+```
+
+`view:cache` 已在当前 Linux PHP 8.3 环境验证。修改模板后需重新执行；需要取消模板预编译时使用 `view:clear`。插件的路由和管理页面依赖启用状态，不要未经验证就长期缓存插件发现结果。
+
+默认主题的 Vite 资源位于 `public/default/assets`，文件名带内容哈希。可在站点 Nginx 配置的 `server` 块加入以下规则，让这些资源压缩传输并由浏览器缓存；已有同路径规则时合并配置，不重复添加：
+
+```nginx
+location ^~ /default/assets/ {
+    try_files $uri =404;
+    expires 1y;
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/css application/javascript;
+}
+```
+
+此规则仅用于构建后的公开静态文件，不用于后台页面、账单、接口或用户上传文件。发布时一并上传 `public/default/manifest.json` 和对应资源，保留上一版资源直到旧页面完成切换。通过面板检查 Nginx 配置后重新加载。指令依据：[Nginx 缓存响应头](https://nginx.org/en/docs/http/ngx_http_headers_module.html)、[Nginx gzip](https://nginx.org/en/docs/http/ngx_http_gzip_module.html)。
+
 ### 常见问题
 
 **安装提示 `composer-runtime-api` 版本不兼容**

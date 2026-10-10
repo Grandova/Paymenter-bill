@@ -28,6 +28,9 @@ class Checkout extends Component
     #[Locked]
     public $total;
 
+    #[Locked]
+    public $currency;
+
     public $setup_fee;
 
     #[Url(keep: true, as: 'options')]
@@ -41,8 +44,9 @@ class Checkout extends Component
 
     public function mount($product)
     {
-        $this->product = $this->category->products()->where('slug', $product)->firstOrFail();
-        if ($this->product->stock === 0 || !$this->product->price()->available) {
+        $this->currency = Cart::get()->currency_code ?? session('currency', config('settings.default_currency'));
+        $this->product = $this->category->products()->where('slug', $product)->where('hidden', false)->with(['plans.prices.currency', 'configOptions.children.plans.prices.currency'])->firstOrFail();
+        if ($this->product->stock === 0 || !$this->product->price(currency: $this->currency)->available) {
             return $this->redirect(route('products.show', ['category' => $this->category, 'product' => $this->product]), true);
         }
 
@@ -59,8 +63,8 @@ class Checkout extends Component
             }
             $this->checkoutConfig = (array) $item->checkout_config;
         } else {
-            // Set the first plan as default
-            $this->plan = $this->plan_id ? $this->product->plans->findOrFail($this->plan_id) : $this->product->plans->first();
+            $availablePlans = $this->product->availablePlans($this->currency);
+            $this->plan = $availablePlans->find($this->plan_id) ?? $availablePlans->first();
             $this->plan_id = $this->plan->id;
 
             foreach ($this->getCheckoutConfig() as $config) {
@@ -93,14 +97,14 @@ class Checkout extends Component
 
     public function updatePricing()
     {
-        $total = $this->plan->price()->price;
-        $setup_fee = $this->plan->price()->setup_fee;
+        $total = $this->plan->price($this->currency)->price;
+        $setup_fee = $this->plan->price($this->currency)->setup_fee;
 
         $this->product->configOptions->each(function ($option) use (&$total, &$setup_fee) {
             // Check if checkbox is set, if so, add price if checked
             if ($option->type === 'checkbox' && (isset($this->configOptions[$option->id]) && $this->configOptions[$option->id])) {
-                $total += $option->children->first()?->price(billing_period: $this->plan->billing_period, billing_unit: $this->plan->billing_unit)->price;
-                $setup_fee += $option->children->first()?->price(billing_period: $this->plan->billing_period, billing_unit: $this->plan->billing_unit)->setup_fee;
+                $total += $option->children->first()?->price(billing_period: $this->plan->billing_period, billing_unit: $this->plan->billing_unit, currency: $this->currency)->price;
+                $setup_fee += $option->children->first()?->price(billing_period: $this->plan->billing_period, billing_unit: $this->plan->billing_unit, currency: $this->currency)->setup_fee;
 
                 return;
             }
@@ -113,13 +117,13 @@ class Checkout extends Component
             }
 
             // Add price of selected option
-            $total += $option->children->where('id', $this->configOptions[$option->id])->first()?->price(billing_period: $this->plan->billing_period, billing_unit: $this->plan->billing_unit)->price;
-            $setup_fee += $option->children->where('id', $this->configOptions[$option->id])->first()?->price(billing_period: $this->plan->billing_period, billing_unit: $this->plan->billing_unit)->setup_fee;
+            $total += $option->children->where('id', $this->configOptions[$option->id])->first()?->price(billing_period: $this->plan->billing_period, billing_unit: $this->plan->billing_unit, currency: $this->currency)->price;
+            $setup_fee += $option->children->where('id', $this->configOptions[$option->id])->first()?->price(billing_period: $this->plan->billing_period, billing_unit: $this->plan->billing_unit, currency: $this->currency)->setup_fee;
         });
 
         $this->total = new Price([
             'price' => $total,
-            'currency' => $this->plan->price()->currency,
+            'currency' => $this->plan->price($this->currency)->currency,
             'setup_fee' => $setup_fee,
         ], apply_exclusive_tax: true);
     }
@@ -128,7 +132,7 @@ class Checkout extends Component
     public function updatedPlanId($value)
     {
         $this->validateOnly('plan_id');
-        $this->plan = $this->product->plans->findOrFail($value);
+        $this->plan = $this->product->availablePlans($this->currency)->findOrFail($value);
         $this->updatePricing();
     }
 
@@ -145,7 +149,7 @@ class Checkout extends Component
 
     public function rules()
     {
-        $availablePlanIds = $this->product->availablePlans()->pluck('id')->toArray();
+        $availablePlanIds = $this->product->availablePlans($this->currency)->pluck('id')->toArray();
 
         $rules = [
             'plan_id' => [
@@ -155,14 +159,21 @@ class Checkout extends Component
         ];
         foreach ($this->product->configOptions as $option) {
             if (in_array($option->type, ['text', 'number'])) {
-                $rules["configOptions.{$option->id}"] = ['required'];
+                $rules["configOptions.{$option->id}"] = $option->type === 'number' ? ['required', 'numeric'] : ['required'];
             } elseif ($option->type === 'checkbox') {
-                // No validation needed for checkbox
+                $rules["configOptions.{$option->id}"] = ['boolean', function ($attribute, $value, $fail) use ($option) {
+                    if (filter_var($value, FILTER_VALIDATE_BOOLEAN)
+                        && !$option->children->first()?->price(billing_period: $this->plan->billing_period, billing_unit: $this->plan->billing_unit, currency: $this->currency)->available) {
+                        $fail(__('product.config_option_currency_unavailable'));
+                    }
+                }];
             } else {
-                $rules["configOptions.{$option->id}"] = [
-                    'required',
-                    Rule::in($option->children->pluck('id')->toArray()),
-                ];
+                $rules["configOptions.{$option->id}"] = ['required', function ($attribute, $value, $fail) use ($option) {
+                    $configValue = $option->children->firstWhere('id', $value);
+                    if (!$configValue || !$configValue->price(billing_period: $this->plan->billing_period, billing_unit: $this->plan->billing_unit, currency: $this->currency)->available) {
+                        $fail(__('product.config_option_currency_unavailable'));
+                    }
+                }];
             }
         }
         foreach ($this->getCheckoutConfig() as $key => $config) {
@@ -173,8 +184,16 @@ class Checkout extends Component
             if (isset($config['type'])) {
                 switch ($config['type']) {
                     case 'text':
-                    case 'number':
                         $validationRules[] = 'string';
+                        break;
+                    case 'number':
+                        $validationRules[] = 'numeric';
+                        if (isset($config['min_value'])) {
+                            $validationRules[] = 'min:' . $config['min_value'];
+                        }
+                        if (isset($config['max_value'])) {
+                            $validationRules[] = 'max:' . $config['max_value'];
+                        }
                         break;
                     case 'select':
                     case 'radio':
@@ -193,6 +212,9 @@ class Checkout extends Component
                     // Is validation seperated by |?
                     $validationRules = array_merge($validationRules, explode('|', $config['validation']));
                 }
+            }
+            if (!($config['required'] ?? false) && count($validationRules) > 0) {
+                array_unshift($validationRules, 'nullable');
             }
             if (count($validationRules) > 0) {
                 $rules["checkoutConfig.{$config['name']}"] = $validationRules;
@@ -284,7 +306,8 @@ class Checkout extends Component
     public function render()
     {
         return view('products.checkout', [
-            'products' => $this->category->products()->where('hidden', false)->with(['category', 'plans.prices', 'configOptions.children.plans.prices'])->orderBy('sort')->get(),
+            'products' => $this->category->products()->where('hidden', false)->with(['category', 'plans.prices.currency', 'configOptions.children.plans.prices.currency'])->orderBy('sort')->get(),
+            'currency' => $this->currency,
         ])->layoutData([
             'title' => $this->product->name,
             'image' => $this->product->image ? Storage::url($this->product->image) : null,

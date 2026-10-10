@@ -470,7 +470,7 @@ class Settings
                     'name' => 'cronjob_order_terminate',
                     'label' => __('Delete server if invoice is x days overdue (also cancels the invoice)'),
                     'type' => 'number',
-                    'default' => 14,
+                    'default' => 3,
                     'required' => true,
                 ],
                 [
@@ -519,11 +519,11 @@ class Settings
                 ],
                 [
                     'name' => 'credits_auto_use',
-                    'label' => __('Automatically use credits'),
+                    'label' => __('Allow balance auto-renew'),
                     'type' => 'checkbox',
                     'database_type' => 'boolean',
                     'default' => true,
-                    'description' => __('Automatically pay recurring invoices using available credits. (only pays if credits is more or equal to invoice amount)'),
+                    'description' => __('Allow balance auto-renewal for services enabled by the customer. Only pays when the available balance covers the full invoice amount.'),
                 ],
                 [
                     // Enable credits give back if and service is upgraded or downgraded

@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\InvoiceTransactionStatus;
 use App\Models\InvoiceTransaction;
 use App\Models\User;
 
@@ -44,7 +45,12 @@ class InvoiceTransactionPolicy extends BasePolicy
      */
     public function delete(User $user, InvoiceTransaction $invoiceTransaction): bool
     {
-        return $user->hasPermission('admin.invoice_transactions.delete');
+        return $user->hasPermission('admin.invoice_transactions.delete')
+            && $invoiceTransaction->status === InvoiceTransactionStatus::Failed
+            && !$invoiceTransaction->applied_to_invoice
+            && !$invoiceTransaction->credited_to_balance
+            && (float) $invoiceTransaction->refunded_amount === 0.0
+            && (float) $invoiceTransaction->credited_amount === 0.0;
     }
 
     /**

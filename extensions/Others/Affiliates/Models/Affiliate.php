@@ -15,9 +15,14 @@ class Affiliate extends Model
     protected $fillable = [
         'user_id',
         'code',
+        'enabled',
         'visitors',
         'reward',
         'discount',
+    ];
+
+    protected $casts = [
+        'enabled' => 'boolean',
     ];
 
     public function user(): BelongsTo

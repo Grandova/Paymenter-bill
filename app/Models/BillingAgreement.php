@@ -12,6 +12,13 @@ class BillingAgreement extends Model implements Auditable
 {
     use HasProperties, HasUlids, SoftDeletes, Traits\Auditable;
 
+    protected static function booted(): void
+    {
+        static::deleting(function (BillingAgreement $billingAgreement): void {
+            $billingAgreement->services()->get()->each(fn (Service $service) => $service->update(['billing_agreement_id' => null]));
+        });
+    }
+
     protected $fillable = [
         'ulid',
         'user_id',

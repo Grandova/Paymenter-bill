@@ -18,7 +18,13 @@ class ServiceUpgrade extends Model implements Auditable
 
     public const STATUS_COMPLETED = 'completed';
 
+    public const STATUS_CANCELLED = 'cancelled';
+
     public $guarded = [];
+
+    protected $casts = [
+        'stock_reserved' => 'boolean',
+    ];
 
     public function service()
     {
@@ -64,10 +70,10 @@ class ServiceUpgrade extends Model implements Auditable
             return $this->makePrice($newPrice);
         }
 
-        $billingPeriodDays = $this->getBillingPeriodDays();
-        $remainingDays = $this->getRemainingDays();
+        $billingPeriodSeconds = $this->getBillingPeriodSeconds();
+        $remainingSeconds = $this->getRemainingSeconds();
         $priceDifference = $newPrice - $this->resolveOldItemPrice($oldItem);
-        $total = $billingPeriodDays > 0 ? ($priceDifference / $billingPeriodDays) * $remainingDays : $priceDifference;
+        $total = $billingPeriodSeconds > 0 ? ($priceDifference / $billingPeriodSeconds) * $remainingSeconds : $priceDifference;
 
         return $this->makePrice($total);
     }
@@ -115,27 +121,30 @@ class ServiceUpgrade extends Model implements Auditable
         ]);
     }
 
-    protected function getBillingPeriodDays(): int
+    protected function getBillingPeriodSeconds(): int
     {
         $plan = $this->service->plan;
 
         return match ($plan->billing_unit) {
-            'day' => $plan->billing_period,
-            'week' => $plan->billing_period * 7,
-            'month' => $plan->billing_period * 30,
-            'year' => $plan->billing_period * 365,
+            'hour' => $plan->billing_period * 3600,
+            'day' => $plan->billing_period * 86400,
+            'week' => $plan->billing_period * 7 * 86400,
+            'month' => $plan->billing_period * 30 * 86400,
+            'year' => $plan->billing_period * 365 * 86400,
             default => 0,
         };
     }
 
-    protected function getRemainingDays(): int
+    protected function getRemainingSeconds(): int
     {
         if (!$this->service->expires_at) {
             return 0;
         }
-        $billingPeriodDays = $this->getBillingPeriodDays();
+        $billingPeriodSeconds = $this->getBillingPeriodSeconds();
 
-        return min($this->service->expires_at->copy()->startOfDay()->diffInDays(Carbon::now()->startOfDay(), true), $billingPeriodDays);
+        $remainingSeconds = $this->service->expires_at->getTimestamp() - Carbon::now()->getTimestamp();
+
+        return min(max(0, $remainingSeconds), $billingPeriodSeconds);
     }
 
     public function getMaxRefundAmount(): float
@@ -144,10 +153,10 @@ class ServiceUpgrade extends Model implements Auditable
         if (!$this->service->expires_at) {
             return 0;
         }
-        $billingPeriodDays = $this->getBillingPeriodDays();
-        $remainingDays = $this->getRemainingDays();
+        $billingPeriodSeconds = $this->getBillingPeriodSeconds();
+        $remainingSeconds = $this->getRemainingSeconds();
         $paidAmount = (float) $this->service->calculatePrice();
 
-        return $billingPeriodDays > 0 ? ($paidAmount / $billingPeriodDays) * $remainingDays : $paidAmount;
+        return $billingPeriodSeconds > 0 ? ($paidAmount / $billingPeriodSeconds) * $remainingSeconds : $paidAmount;
     }
 }

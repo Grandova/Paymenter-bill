@@ -91,10 +91,15 @@ class Invoice extends Model implements Auditable
     public function currentBalance(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->total
-                - $this->transactions->where('status', InvoiceTransactionStatus::Succeeded)->sum(function ($txn) {
-                    return $txn->amount - $txn->refunded_amount;
-                })
+            get: fn () => (
+                $this->moneyToCents($this->total)
+                - $this->transactions
+                    ->where('status', InvoiceTransactionStatus::Succeeded)
+                    ->sum(fn ($transaction) => $this->moneyToCents($transaction->amount)
+                        - $this->moneyToCents($transaction->refunded_amount)
+                        - $this->moneyToCents($transaction->credited_amount)
+                    )
+            ) / 100.0
         );
     }
 
@@ -130,6 +135,7 @@ class Invoice extends Model implements Auditable
                     ->where('status', InvoiceTransactionStatus::Succeeded)
                     ->sum(fn ($transaction) => $this->moneyToCents($transaction->amount)
                         - $this->moneyToCents($transaction->refunded_amount)
+                        - $this->moneyToCents($transaction->credited_amount)
                     )
             ) / 100.0
         );
@@ -217,9 +223,44 @@ class Invoice extends Model implements Auditable
         return $this->hasMany(InvoiceItem::class);
     }
 
+    public function cancelPendingServices(): void
+    {
+        $serviceIds = $this->items()
+            ->where('reference_type', Service::class)
+            ->whereNotNull('reference_id')
+            ->distinct()
+            ->pluck('reference_id');
+
+        foreach ($serviceIds as $serviceId) {
+            $service = Service::whereKey($serviceId)
+                ->where('user_id', $this->user_id)
+                ->lockForUpdate()
+                ->first();
+            if (!$service || $service->status !== Service::STATUS_PENDING) {
+                continue;
+            }
+
+            $service->update(['status' => Service::STATUS_CANCELLED]);
+            if ($service->product?->stock !== null) {
+                $service->product->increment('stock', $service->quantity);
+            }
+        }
+    }
+
     public function transactions()
     {
         return $this->hasMany(InvoiceTransaction::class);
+    }
+
+    public function canBeEdited(): bool
+    {
+        $hasInFlightTransactions = $this->getAttribute('has_in_flight_transactions');
+
+        return $this->status !== self::STATUS_PAID
+            && !($hasInFlightTransactions ?? $this->transactions()->whereIn('status', [
+                InvoiceTransactionStatus::Succeeded->value,
+                InvoiceTransactionStatus::Processing->value,
+            ])->exists());
     }
 
     public function adjustmentNotes()

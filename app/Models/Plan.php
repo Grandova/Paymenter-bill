@@ -73,6 +73,7 @@ class Plan extends Model implements Auditable
             return Attribute::make(get: fn () => 0);
         }
         $diffInDays = match ($this->billing_unit) {
+            'hour' => 1 / 24,
             'day' => 1,
             'week' => 7,
             'month' => 30,

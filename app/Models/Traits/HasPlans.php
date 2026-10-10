@@ -48,7 +48,7 @@ trait HasPlans
         $currency = $currency ?? session('currency', config('settings.default_currency'));
 
         // Check for free plan
-        if ($this->availablePlans($currency)->where('type', 'free')->isNotEmpty()) {
+        if (!$plan_id && !$billing_period && !$billing_unit && $this->availablePlans($currency)->where('type', 'free')->isNotEmpty()) {
             return new Price(free: true, dontShowUnavailablePrice: $this->dontShowUnavailablePrice ?? false);
         }
 
@@ -69,15 +69,12 @@ trait HasPlans
             foreach ($plan->prices->when($currency, function ($query) use ($currency) {
                 return $query->where('currency_code', $currency);
             }) as $price) {
-                if ($price->price < $priceAndCurrency['price'] || $priceAndCurrency['price'] === null) {
+                if ($priceAndCurrency['price'] === null || $price->price < $priceAndCurrency['price']->price) {
                     $priceAndCurrency['price'] = $price;
                     $priceAndCurrency['currency'] = $price->currency;
                 }
             }
 
-            if ($priceAndCurrency['price']) {
-                break;
-            }
         }
 
         return new Price($priceAndCurrency, dontShowUnavailablePrice: $this->dontShowUnavailablePrice ?? false);

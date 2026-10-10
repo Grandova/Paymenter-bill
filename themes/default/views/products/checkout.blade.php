@@ -17,7 +17,7 @@
                 <p class="text-muted text-sm mt-2 mb-6">{{ __('Choose a product to view its available plans and options.') }}</p>
                 <div class="grid sm:grid-cols-2 gap-4">
                     @foreach ($products as $location)
-                    @php $available = $location->stock !== 0 && $location->price()->available; @endphp
+                    @php $available = $location->stock !== 0 && $location->price(currency: $currency)->available; @endphp
                     <a class="location-option {{ !$available ? 'is-unavailable' : '' }}"
                         @if ($available) href="{{ route('products.checkout', ['category' => $category, 'product' => $location->slug, 'edit' => $cartProductKey]) }}" wire:navigate
                         @else aria-disabled="true" @endif
@@ -29,7 +29,7 @@
                         @endif
                         <span class="flex flex-col gap-1">
                             <span class="font-semibold">{{ $location->name }}</span>
-                            <span class="text-muted text-sm">{{ $available ? $location->price()->formatted->price : __('Unavailable') }}</span>
+                            <span class="text-muted text-sm">{{ $available ? $location->price(currency: $currency)->formatted->price : __('Unavailable') }}</span>
                         </span>
                         @if ($location->id === $product->id)
                         <x-ri-checkbox-circle-fill class="size-5 ml-auto shrink-0" />
@@ -52,27 +52,57 @@
             </div>
             @foreach ($product->configOptions as $configOption)
                 @php
-                    $showPriceTag = $configOption->children->filter(fn ($value) => !$value->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit)->is_free)->count() > 0;
+                    $showPriceTag = $configOption->children->filter(fn ($value) => !$value->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit, currency: $currency)->is_free)->count() > 0;
                 @endphp
                 <section class="checkout-section">
                 <h2 class="mb-6"><x-ri-settings-3-line class="size-6" />{{ $configOption->name }}</h2>
-                <x-form.configoption :config="$configOption" :name="'configOptions.' . $configOption->id" :showPriceTag="$showPriceTag" :plan="$plan">
+                <x-form.configoption :config="$configOption" :name="'configOptions.' . $configOption->id" :showPriceTag="$showPriceTag" :plan="$plan" :currency="$currency">
                     @if ($configOption->type == 'select')
                         @foreach ($configOption->children as $configOptionValue)
+                            @php
+                                $optionPrice = $configOptionValue->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit, currency: $currency);
+                                $optionPriceLabel = $plan->type === 'recurring'
+                                    ? __('services.price_every_period', [
+                                        'price' => $optionPrice->formatted->price,
+                                        'period' => $plan->billing_period > 1 ? $plan->billing_period : '',
+                                        'unit' => trans_choice(__('services.billing_cycles.' . $plan->billing_unit), $plan->billing_period),
+                                    ])
+                                    : $optionPrice->formatted->price;
+                            @endphp
                             <option value="{{ $configOptionValue->id }}">
                                 {{ $configOptionValue->name }}
-                                {{ ($showPriceTag && $configOptionValue->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit)->available) ? ' - ' . $configOptionValue->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit) : '' }}
+                                @if ($showPriceTag && $optionPrice->available)
+                                    - {{ $optionPriceLabel }}
+                                    @if ($optionPrice->has_setup_fee)
+                                        ({{ __('product.first_payment_setup_fee', ['amount' => $optionPrice->formatted->setup_fee]) }})
+                                    @endif
+                                @endif
                             </option>
                         @endforeach
                     @elseif($configOption->type == 'radio')
                         @foreach ($configOption->children as $configOptionValue)
+                            @php
+                                $optionPrice = $configOptionValue->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit, currency: $currency);
+                                $optionPriceLabel = $plan->type === 'recurring'
+                                    ? __('services.price_every_period', [
+                                        'price' => $optionPrice->formatted->price,
+                                        'period' => $plan->billing_period > 1 ? $plan->billing_period : '',
+                                        'unit' => trans_choice(__('services.billing_cycles.' . $plan->billing_unit), $plan->billing_period),
+                                    ])
+                                    : $optionPrice->formatted->price;
+                            @endphp
                             <div class="checkout-option flex items-center gap-3">
                                 <input type="radio" id="{{ $configOptionValue->id }}" name="{{ $configOption->id }}"
                                     wire:model.live="configOptions.{{ $configOption->id }}"
                                     value="{{ $configOptionValue->id }}" />
                                 <label for="{{ $configOptionValue->id }}">
                                     {{ $configOptionValue->name }}
-                                    {{ ($showPriceTag && $configOptionValue->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit)->available) ? ' - ' . $configOptionValue->price(billing_period: $plan->billing_period, billing_unit: $plan->billing_unit) : '' }}
+                                    @if ($showPriceTag && $optionPrice->available)
+                                        - {{ $optionPriceLabel }}
+                                        @if ($optionPrice->has_setup_fee)
+                                            ({{ __('product.first_payment_setup_fee', ['amount' => $optionPrice->formatted->setup_fee]) }})
+                                        @endif
+                                    @endif
                                 </label>
                             </div>
                         @endforeach
@@ -84,13 +114,21 @@
                 <h2><x-ri-stack-line class="size-6" />{{ __('Select a plan') }}</h2>
                 <p class="text-muted text-sm mt-2 mb-6">{{ __('Choose the billing period that suits you.') }}</p>
                 <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                    @foreach ($product->availablePlans() as $availablePlan)
+                    @foreach ($product->availablePlans($currency) as $availablePlan)
                     <label class="plan-option">
                         <input type="radio" wire:model.live="plan_id" value="{{ $availablePlan->id }}" name="plan_id" class="sr-only" />
                         <span class="font-semibold">{{ $availablePlan->name }}</span>
-                        <strong class="text-2xl mt-4">{{ $availablePlan->price()->formatted->price }}</strong>
-                        @if ($availablePlan->price()->has_setup_fee)
-                        <span class="text-muted text-sm mt-2">+ {{ $availablePlan->price()->formatted->setup_fee }} {{ __('product.setup_fee') }}</span>
+                        <strong class="text-2xl mt-4">{{ $availablePlan->price($currency)->formatted->price }}</strong>
+                        @if ($availablePlan->type === 'recurring')
+                        <span class="text-muted text-sm">{{ __('services.every_period', [
+                            'period' => $availablePlan->billing_period > 1 ? $availablePlan->billing_period : '',
+                            'unit' => trans_choice(__('services.billing_cycles.' . $availablePlan->billing_unit), $availablePlan->billing_period)
+                        ]) }}</span>
+                        @elseif ($availablePlan->type === 'one-time')
+                        <span class="text-muted text-sm">{{ __('One Time') }}</span>
+                        @endif
+                        @if ($availablePlan->price($currency)->has_setup_fee)
+                        <span class="text-muted text-sm mt-2">+ {{ $availablePlan->price($currency)->formatted->setup_fee }} {{ __('product.setup_fee') }}</span>
                         @endif
                         <x-ri-check-line class="plan-check size-5" />
                     </label>
@@ -137,16 +175,21 @@
                     <h4>{{ \App\Classes\Settings::tax()->name }} ({{ \App\Classes\Settings::tax()->rate }}%):</h4> {{ $total->formatted->total_tax }}
                 </div>
             @endif
+            @if ($total->setup_fee > 0)
+                <div class="text-sm text-muted">
+                    {{ __('product.first_payment_setup_fee', ['amount' => $total->formatted->setup_fee]) }}
+                </div>
+            @endif
             <div class="text-lg font-semibold flex justify-between gap-6">
                 <h4>{{ __('product.total_today') }}:</h4> {{ $total }}
             </div>
-            @if ($total->setup_fee > 0 && $plan->type == 'recurring')
+            @if ($plan->type == 'recurring')
                 <div class="text-sm font-semibold flex justify-between gap-4">
                     <h4>{{ __('product.then_after_x', ['time' => $plan->billing_period . ' ' . trans_choice(__('services.billing_cycles.' . $plan->billing_unit), $plan->billing_period)]) }}:
                     </h4> {{ $total->format($total->price) }}
                 </div>
             @endif
-            @if (($product->stock > 0 || !$product->stock) && $product->price()->available)
+            @if (($product->stock > 0 || !$product->stock) && $product->price(currency: $currency)->available)
                 <div>
                     <x-button.primary wire:click="checkout" wire:loading.attr="disabled">
                         <x-loading target="checkout" />

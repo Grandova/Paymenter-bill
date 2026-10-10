@@ -359,6 +359,17 @@
     font:inherit;
     margin-top:6px;
 }
+.vm-console select {
+    display:block;
+    border:1px solid var(--vm-line);
+    border-radius:7px;
+    background:var(--vm-bg);
+    color:var(--vm-text);
+    padding:9px 11px;
+    width:100%;
+    font:inherit;
+    margin-top:6px;
+}
 .vm-console input:focus {
     outline:2px solid #cf284340;
     border-color:var(--vm-accent);
@@ -474,12 +485,78 @@
 .vm-panel h3 {
     margin-bottom:4px;
 }
+.vm-port-mappings {
+    margin-top:22px;
+}
+.vm-port-quota {
+    margin-left:auto;
+    color:var(--vm-muted);
+    font-size:12px;
+    white-space:nowrap;
+}
+.vm-port-table-wrap {
+    overflow-x:auto;
+}
+.vm-port-table {
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+}
+.vm-port-table th,.vm-port-table td {
+    padding:11px 12px;
+    text-align:left;
+    border-bottom:1px solid var(--vm-line);
+    white-space:nowrap;
+}
+.vm-port-table th {
+    color:var(--vm-muted);
+    font-size:12px;
+    font-weight:600;
+}
+.vm-port-default {
+    color:#16824f;
+    background:#16a58116;
+    border-radius:20px;
+    padding:3px 8px;
+    font-size:11px;
+}
+.vm-port-delete {
+    color:#d84e5d!important;
+}
+.vm-port-locked,.vm-port-empty {
+    color:var(--vm-muted);
+    font-size:12px;
+}
+.vm-port-empty {
+    padding:10px 0;
+}
+.vm-port-form {
+    display:grid;
+    grid-template-columns:1.2fr .8fr 1fr 1fr auto;
+    gap:12px;
+    align-items:end;
+    margin-top:18px;
+    padding-top:18px;
+    border-top:1px solid var(--vm-line);
+}
+.vm-port-form label {
+    min-width:0;
+}
+.vm-port-form button {
+    min-height:40px;
+}
 @media(max-width:1100px) {
     .vm-toolbar {
         flex-wrap:wrap;
     }
     .vm-columns {
         grid-template-columns:1fr;
+    }
+    .vm-port-form {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    .vm-port-form button {
+        grid-column:1 / -1;
     }
 }
 @media(max-width:600px) {
@@ -500,6 +577,12 @@
     }
     .vm-stat,.vm-panel {
         padding:17px;
+    }
+    .vm-port-form {
+        grid-template-columns:1fr;
+    }
+    .vm-port-form button {
+        grid-column:auto;
     }
     .vm-stats {
         gap:10px;

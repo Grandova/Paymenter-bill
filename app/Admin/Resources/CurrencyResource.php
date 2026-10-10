@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class CurrencyResource extends Resource
 {
+    protected static ?int $navigationSort = 140;
+
     protected static ?string $model = Currency::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-money-dollar-circle-line';
@@ -29,7 +31,7 @@ class CurrencyResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Finance');
+        return __('System management');
     }
 
     public static function getEloquentQuery(): Builder

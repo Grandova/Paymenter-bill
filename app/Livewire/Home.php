@@ -17,7 +17,6 @@ class Home extends Component
                             $query->where('hidden', false);
                         });
                 })
-                ->with(['products.plans.prices'])
                 ->orderBy('sort')
                 ->get(),
             'title' => __('Home'),

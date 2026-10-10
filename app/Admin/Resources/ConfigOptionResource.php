@@ -22,6 +22,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ConfigOptionResource extends Resource
 {
+    protected static ?int $navigationSort = 70;
+
     protected static ?string $model = ConfigOption::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-equalizer-2-line';
@@ -35,7 +37,12 @@ class ConfigOptionResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Products and services');
+        return __('Business management');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Purchase configuration');
     }
 
     public static function form(Schema $schema): Schema

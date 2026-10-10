@@ -7,13 +7,15 @@ use Filament\Clusters\Cluster;
 
 class InvoiceCluster extends Cluster
 {
+    protected static ?int $navigationSort = 20;
+
     protected static string|\BackedEnum|null $navigationIcon = 'ri-receipt-line';
 
     protected static string|\BackedEnum|null $activeNavigationIcon = 'ri-receipt-fill';
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Finance');
+        return __('Customers and finance');
     }
 
     public static function getClusterBreadcrumb(): ?string
@@ -23,7 +25,7 @@ class InvoiceCluster extends Cluster
 
     public static function getNavigationLabel(): string
     {
-        return __('Invoices');
+        return __('Invoice management');
     }
 
     public static function getNavigationBadge(): ?string

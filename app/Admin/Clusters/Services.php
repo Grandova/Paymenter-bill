@@ -10,13 +10,13 @@ class Services extends Cluster
 
     protected static string|\BackedEnum|null $activeNavigationIcon = 'ri-archive-stack-fill';
 
-    protected static ?int $navigationSort = 0;
+    protected static ?int $navigationSort = 60;
 
     protected static ?string $slug = 'services';
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Products and services');
+        return __('Business management');
     }
 
     public static function getClusterBreadcrumb(): ?string
@@ -26,6 +26,6 @@ class Services extends Cluster
 
     public static function getNavigationLabel(): string
     {
-        return __('Services');
+        return __('Service records');
     }
 }

@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Cart;
 use App\Models\Currency;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Once;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class CartCurrencyTest extends TestCase
@@ -64,5 +66,42 @@ class CartCurrencyTest extends TestCase
 
         $this->assertFalse($price->available);
         $this->assertEquals(0.0, (float) $price->price);
+    }
+
+    public function test_checkout_uses_the_existing_cart_currency_when_session_currency_changes(): void
+    {
+        Currency::create(['code' => 'EUR', 'name' => 'Euro', 'suffix' => 'EUR', 'format' => '1.000,00']);
+        $this->product->plan->prices()->create([
+            'price' => 100.00,
+            'currency_code' => 'EUR',
+        ]);
+
+        $cart = $this->makeCartWithItem('CNY');
+        $item = $cart->items->first();
+        session(['currency' => 'EUR']);
+        Once::flush();
+
+        Livewire::withCookie('cart', $cart->ulid)
+            ->test('products.checkout', [
+                'category' => $this->product->product->category,
+                'product' => $this->product->product->slug,
+                'cartProductKey' => $item->id,
+            ])
+            ->assertSet('currency', 'CNY')
+            ->assertSet('total.price', 10.00)
+            ->assertSeeText('¥10.00');
+
+        Once::flush();
+        Livewire::withCookie('cart', $cart->ulid)
+            ->test('products.index', ['category' => $this->product->product->category])
+            ->assertSeeText('¥10.00');
+
+        Once::flush();
+        Livewire::withCookie('cart', $cart->ulid)
+            ->test('products.show', [
+                'category' => $this->product->product->category,
+                'product' => $this->product->product->slug,
+            ])
+            ->assertSeeText('¥10.00');
     }
 }

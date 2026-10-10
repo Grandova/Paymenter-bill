@@ -3,8 +3,6 @@
 namespace App\Admin\Resources\OrderResource\RelationManagers;
 
 use App\Admin\Resources\ServiceResource;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
@@ -40,10 +38,6 @@ class ServiceRelationManager extends RelationManager
             ->recordActions([
                 ViewAction::make()->url(fn ($record) => ServiceResource::getUrl('edit', ['record' => $record])),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->toolbarActions([]);
     }
 }

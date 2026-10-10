@@ -2,6 +2,7 @@
 
 namespace App\Admin\Resources\InvoiceResource\RelationManagers;
 
+use App\Enums\InvoiceTransactionStatus;
 use App\Helpers\ExtensionHelper;
 use App\Models\Invoice;
 use App\Models\InvoiceTransaction;
@@ -28,7 +29,15 @@ class TransactionsRelationManager extends RelationManager
 
     protected function canModifyTransactions(): bool
     {
-        return !config('settings.immutable_invoices_enabled') || $this->getOwnerRecord()?->status === Invoice::STATUS_PENDING;
+        $invoice = Invoice::query()->find($this->getOwnerRecord()->id);
+
+        return $invoice
+            && !in_array($invoice->status, [Invoice::STATUS_PAID, Invoice::STATUS_CANCELLED], true)
+            && !$invoice->transactions()->whereIn('status', [
+                InvoiceTransactionStatus::Succeeded->value,
+                InvoiceTransactionStatus::Processing->value,
+            ])->exists()
+            && (!config('settings.immutable_invoices_enabled') || $invoice->status === Invoice::STATUS_PENDING);
     }
 
     public function form(Schema $schema): Schema
@@ -75,10 +84,13 @@ class TransactionsRelationManager extends RelationManager
             ->pluralModelLabel(__('Transactions'))
             ->recordTitleAttribute('transaction_id')
             ->columns([
-                TextColumn::make('gateway.name')->label(__('Gateway')),
+                TextColumn::make('gateway.name')
+                    ->label(__('Gateway'))
+                    ->state(fn (InvoiceTransaction $record) => $record->credited_to_balance ? __('invoices.credited_to_account') : $record->gateway?->name),
                 TextColumn::make('transaction_id'),
                 TextColumn::make('formattedAmount')->label(__('Amount')),
                 TextColumn::make('formattedRefundedAmount')->label(__('invoices.refunded_amount')),
+                TextColumn::make('formattedCreditedAmount')->label(__('invoices.credited_amount')),
                 TextColumn::make('formattedFee')->label(__('Fee')),
                 TextColumn::make('created_at'),
             ])
@@ -87,7 +99,15 @@ class TransactionsRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
-                    ->visible(fn (): bool => $this->canModifyTransactions()),
+                    ->visible(fn (): bool => $this->canModifyTransactions())
+                    ->before(function (CreateAction $action): void {
+                        if ($this->canModifyTransactions()) {
+                            return;
+                        }
+
+                        Notification::make()->title(__('invoices.invoice_edit_blocked'))->danger()->send();
+                        $action->halt();
+                    }),
             ])
             ->recordActions([
                 Action::make('refund')
@@ -121,7 +141,7 @@ class TransactionsRelationManager extends RelationManager
                         Toggle::make('refund_via_gateway')
                             ->label(__('invoices.refund_via_gateway'))
                             ->default(false)
-                            ->visible(fn (InvoiceTransaction $record): bool => $record->gateway && $record->gateway->extension && ExtensionHelper::hasFunction($record->gateway, 'supportsRefunds') && ExtensionHelper::hasFunction($record->gateway, 'refund')),
+                            ->visible(fn (InvoiceTransaction $record): bool => filled($record->transaction_id) && $record->gateway && $record->gateway->extension && ExtensionHelper::hasFunction($record->gateway, 'supportsRefunds') && ExtensionHelper::hasFunction($record->gateway, 'refund')),
                     ])
                     ->action(function (InvoiceTransaction $record, array $data, Action $action): void {
                         try {
@@ -141,18 +161,40 @@ class TransactionsRelationManager extends RelationManager
                         }
                     })
                     ->visible(
-                        fn (InvoiceTransaction $record): bool => !empty($record->transaction_id) &&
+                        fn (InvoiceTransaction $record): bool => $record->status === InvoiceTransactionStatus::Succeeded
+                            && !$record->credited_to_balance &&
                             $record->refundable_amount > 0 &&
                             Auth::user()->can('update', $record)
                     )
                     ->modalSubmitAction(fn (Action $action) => $action->label(__('invoices.refund'))),
                 DeleteAction::make()
-                    ->visible(fn (): bool => $this->canModifyTransactions()),
+                    ->visible(fn (): bool => $this->canModifyTransactions())
+                    ->before(function (InvoiceTransaction $record, DeleteAction $action): void {
+                        if ($this->canModifyTransactions()) {
+                            return;
+                        }
+
+                        Notification::make()->title(__('invoices.invoice_edit_blocked'))->danger()->send();
+                        $action->cancel();
+                    })
+                    ->disabled(fn (InvoiceTransaction $record): bool => $record->status === InvoiceTransactionStatus::Succeeded || $record->credited_to_balance)
+                    ->tooltip(fn (InvoiceTransaction $record): ?string => $record->status === InvoiceTransactionStatus::Succeeded || $record->credited_to_balance
+                        ? __('invoices.successful_transaction_delete_blocked')
+                        : null),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->visible(fn (): bool => $this->canModifyTransactions()),
+                        ->visible(fn (): bool => $this->canModifyTransactions())
+                        ->before(function (DeleteBulkAction $action, $records): void {
+                            if (!$this->canModifyTransactions() || $records->contains(fn (InvoiceTransaction $record): bool => $record->status === InvoiceTransactionStatus::Succeeded || $record->credited_to_balance)) {
+                                Notification::make()
+                                    ->title(__('invoices.invoice_edit_blocked'))
+                                    ->danger()
+                                    ->send();
+                                $action->cancel();
+                            }
+                        }),
                 ]),
             ]);
     }

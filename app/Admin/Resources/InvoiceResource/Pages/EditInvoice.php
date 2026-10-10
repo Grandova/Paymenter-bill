@@ -8,6 +8,7 @@ use App\Classes\PDF;
 use App\Models\Invoice;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
 class EditInvoice extends EditRecord
@@ -18,9 +19,24 @@ class EditInvoice extends EditRecord
     {
         parent::mount($record);
 
-        if (config('settings.immutable_invoices_enabled', false) && $this->record->status !== Invoice::STATUS_DRAFT) {
-            redirect(InvoiceResource::getUrl('view', ['record' => $record]));
+        if (!$this->record->canBeEdited() || (config('settings.immutable_invoices_enabled', false) && $this->record->status !== Invoice::STATUS_DRAFT)) {
+            $this->redirect(InvoiceResource::getUrl('view', ['record' => $record]));
         }
+    }
+
+    protected function beforeSave(): void
+    {
+        $invoice = Invoice::query()->whereKey($this->getRecord()->getKey())->lockForUpdate()->firstOrFail();
+
+        if ($invoice->canBeEdited() && (!config('settings.immutable_invoices_enabled', false) || $invoice->status === Invoice::STATUS_DRAFT)) {
+            return;
+        }
+
+        Notification::make()
+            ->title(__('invoices.invoice_edit_blocked'))
+            ->danger()
+            ->send();
+        $this->halt(shouldRollbackDatabaseTransaction: true);
     }
 
     protected function getHeaderActions(): array
@@ -36,7 +52,20 @@ class EditInvoice extends EditRecord
                 ->color('success')
                 ->icon('heroicon-o-check-circle')
                 ->successRedirectUrl(InvoiceResource::getUrl('index')),
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->disabled(fn (Invoice $record): bool => $this->cannotDelete($record))
+                ->tooltip(fn (Invoice $record): ?string => $this->cannotDelete($record) ? __('invoices.invoice_delete_blocked') : null)
+                ->before(function (Invoice $record, DeleteAction $action): void {
+                    if (!$this->cannotDelete($record)) {
+                        return;
+                    }
+
+                    Notification::make()
+                        ->title(__('invoices.invoice_delete_blocked'))
+                        ->danger()
+                        ->send();
+                    $action->cancel();
+                }),
             Action::make('pdf')
                 ->label(__('Download PDF'))
                 ->action(function (Invoice $invoice) {
@@ -56,5 +85,10 @@ class EditInvoice extends EditRecord
     {
         $invoice->status = Invoice::STATUS_PENDING;
         $invoice->save();
+    }
+
+    private function cannotDelete(Invoice $invoice): bool
+    {
+        return !$invoice->canBeEdited();
     }
 }

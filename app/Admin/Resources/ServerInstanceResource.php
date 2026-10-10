@@ -6,7 +6,6 @@ use App\Admin\Resources\ServerInstanceResource\Pages\ListServerInstances;
 use App\Admin\Resources\ServerInstanceResource\Pages\ManageServerInstance;
 use App\Models\Server;
 use App\Models\Service;
-use Carbon\Carbon;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -15,6 +14,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ServerInstanceResource extends ServiceResource
 {
+    protected static ?int $navigationSort = 40;
+
     protected static ?string $cluster = null;
 
     protected static ?string $slug = 'all-servers';
@@ -35,7 +36,12 @@ class ServerInstanceResource extends ServiceResource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Products and services');
+        return __('Business management');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Instance management');
     }
 
     public static function getNavigationBadge(): ?string
@@ -66,24 +72,6 @@ class ServerInstanceResource extends ServiceResource
                         ->orWhere('email', 'like', "%$search%"))),
                 TextColumn::make('product.server.name')->label(__('Assigned server'))->searchable()->sortable(),
                 TextColumn::make('product.server.extension')->label(__('Platform'))->badge(),
-                TextColumn::make('runtime')
-                    ->label('运行状态')->badge()
-                    ->state(fn (Service $record) => $record->properties->firstWhere('key', 'clicd_status')?->value)
-                    ->placeholder('未同步')
-                    ->formatStateUsing(fn (string $state) => ['running' => '运行中', 'stopped' => '已关机', 'missing' => '节点未找到实例'][$state] ?? $state)
-                    ->color(fn (?string $state) => $state === 'running' ? 'success' : 'gray')
-                    ->description(function (Service $record) {
-                        $time = $record->properties->firstWhere('key', 'clicd_synced_at')?->value;
-
-                        return $time ? '同步于 ' . Carbon::parse($time)->format('m-d H:i') : null;
-                    }),
-                TextColumn::make('configuration')->label('配置')
-                    ->state(fn (Service $record) => $record->properties->firstWhere('key', 'clicd_vcpu')
-                        ? $record->properties->firstWhere('key', 'clicd_vcpu')->value . ' 核 / ' . $record->properties->firstWhere('key', 'clicd_ram_mb')?->value . ' MB / ' . $record->properties->firstWhere('key', 'clicd_disk_gb')?->value . ' GB' : null)
-                    ->description(fn (Service $record) => strtoupper($record->properties->firstWhere('key', 'clicd_virtualization')?->value ?? '')),
-                TextColumn::make('ip')->label('IP 地址')
-                    ->state(fn (Service $record) => $record->properties->firstWhere('key', 'clicd_ip')?->value ?: $record->properties->firstWhere('key', 'clicd_ipv6')?->value)
-                    ->placeholder('未分配')->copyable()->toggleable(),
                 TextColumn::make('status')
                     ->label(__('Service status'))
                     ->badge()

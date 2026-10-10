@@ -43,6 +43,14 @@ class Manage extends Component
     #[Locked]
     public string $updatedAt = '';
 
+    public $mappingName = '';
+
+    public $mappingProtocol = 'tcp';
+
+    public $mappingHostPort;
+
+    public $mappingContainerPort;
+
     public function mount(): void
     {
         $this->checkAccess();
@@ -93,7 +101,18 @@ class Manage extends Component
         } catch (ConnectionException $e) {
             $this->error = '无法连接服务器节点，请稍后重试或联系管理员。';
         } catch (RequestException $e) {
-            $this->error = '节点接口错误（' . $e->response->status() . '）：' . ($e->response->json('message') ?: '请求未完成');
+            $message = strtolower((string) $e->response->json('message'));
+            if (str_contains($message, 'host port must be within configured nat4 range')) {
+                $this->error = '公网端口不在节点配置的 NAT4 端口范围内，请更换端口。';
+            } elseif (str_contains($message, 'host port') && (str_contains($message, 'already used') || str_contains($message, 'already in use'))) {
+                $this->error = '该公网端口已被占用，请更换端口。';
+            } elseif (str_contains($message, 'port mapping quota exceeded')) {
+                $this->error = '端口映射数量已达到套餐配额。';
+            } elseif (str_contains($message, 'already mapped')) {
+                $this->error = '该容器端口和协议已存在映射。';
+            } else {
+                $this->error = '节点接口错误（' . $e->response->status() . '），请检查填写内容或联系管理员。';
+            }
         } catch (RuntimeException $e) {
             $this->error = $e->getMessage();
         }
@@ -110,7 +129,7 @@ class Manage extends Component
             $lifecycle->sync($this->service, $instance);
             $this->instance = Arr::only($instance, ['uuid', 'name', 'virtualization', 'status', 'vcpu', 'ram_mb', 'disk_gb', 'template',
                 'ip', 'public_ipv4s', 'ipv6', 'ssh_port',
-                'network_down_mbps', 'network_up_mbps', 'expires_at']);
+                'network_down_mbps', 'network_up_mbps', 'expires_at', 'port_mappings', 'port_mapping_limit']);
             $this->updatedAt = now()->format('H:i:s');
             $this->task = $lifecycle->task($this->service);
             $this->usage = [];
@@ -154,6 +173,66 @@ class Manage extends Component
         }, true);
 
         return $result;
+    }
+
+    public function addPortMapping(): void
+    {
+        $this->checkAccess(true);
+        $data = $this->validate([
+            'mappingName' => ['nullable', 'string', 'max:50'],
+            'mappingProtocol' => ['required', 'in:tcp,udp'],
+            'mappingHostPort' => ['required', 'integer', 'min:1', 'max:65535'],
+            'mappingContainerPort' => ['required', 'integer', 'min:1', 'max:65535'],
+        ], [], [
+            'mappingName' => '映射名称',
+            'mappingProtocol' => '协议',
+            'mappingHostPort' => '公网端口',
+            'mappingContainerPort' => '容器端口',
+        ]);
+
+        $this->run(function () use ($data) {
+            $client = $this->extension()->getClient();
+            $id = LifecycleService::identifier($this->service);
+            $client->container($id, 'port-mappings', 'POST', [
+                'container_port' => (int) $data['mappingContainerPort'],
+                'host_port' => (int) $data['mappingHostPort'],
+                'protocol' => $data['mappingProtocol'],
+                'description' => trim($data['mappingName'] ?? ''),
+            ]);
+            $instance = $client->container($id);
+            $this->instance['port_mappings'] = $instance['port_mappings'] ?? [];
+            $this->instance['port_mapping_limit'] = $instance['port_mapping_limit'] ?? $this->instance['port_mapping_limit'] ?? null;
+            $this->mappingName = '';
+            $this->mappingHostPort = null;
+            $this->mappingContainerPort = null;
+            $this->notice = '端口映射已添加。';
+            $this->audit('nat_mapping_add');
+        }, true);
+    }
+
+    public function deletePortMapping(int $index): void
+    {
+        $this->checkAccess(true);
+        abort_unless($index >= 0, 404);
+
+        $this->run(function () use ($index) {
+            $client = $this->extension()->getClient();
+            $id = LifecycleService::identifier($this->service);
+            $current = $client->container($id);
+            $mappings = $current['port_mappings'] ?? [];
+            if (!isset($mappings[$index])) {
+                throw new RuntimeException('该端口映射已不存在，请刷新后重试。');
+            }
+            if ((int) ($mappings[$index]['container_port'] ?? 0) === 22) {
+                throw new RuntimeException('默认 SSH 映射不能删除。');
+            }
+            $client->container($id, 'port-mappings/' . $index, 'DELETE');
+            $instance = $client->container($id);
+            $this->instance['port_mappings'] = $instance['port_mappings'] ?? [];
+            $this->instance['port_mapping_limit'] = $instance['port_mapping_limit'] ?? $this->instance['port_mapping_limit'] ?? null;
+            $this->notice = '端口映射已删除。';
+            $this->audit('nat_mapping_delete');
+        }, true);
     }
 
     public function render()

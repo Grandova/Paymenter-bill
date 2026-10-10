@@ -14,6 +14,8 @@ use Filament\Tables\Table;
 
 class AuditResource extends Resource
 {
+    protected static ?int $navigationSort = 90;
+
     protected static ?string $model = Audit::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'ri-file-copy-2-line';
@@ -27,7 +29,7 @@ class AuditResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('System');
+        return __('System management');
     }
 
     public static function infolist(Schema $schema): Schema

@@ -9,16 +9,18 @@ use App\Livewire\Component;
 use App\Models\Credit;
 use App\Models\Gateway;
 use App\Models\Invoice;
-use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Validate;
+use Livewire\WithPagination;
 
 #[DisabledIf('credits_enabled', reverse: true)]
 class Credits extends Component
 {
+    use WithPagination;
+
     #[Validate('required|exists:currencies,code')]
     public $currency;
 
@@ -53,30 +55,24 @@ class Credits extends Component
     {
         $this->validate([
             'currency' => 'required|exists:currencies,code',
-            'amount' => 'required|numeric|min:' . config('settings.credits_minimum_deposit') . '|max:' . config('settings.credits_maximum_deposit'),
+            'amount' => 'required|numeric|decimal:0,2|min:' . config('settings.credits_minimum_deposit') . '|max:' . config('settings.credits_maximum_deposit'),
             'gateway' => 'required|in:' . implode(',', array_column($this->gateways, 'id')),
         ]);
 
-        // Create invoice
-        DB::beginTransaction();
+        $invoice = DB::transaction(function () {
+            $user = Auth::user()->newQuery()->whereKey(Auth::id())->lockForUpdate()->firstOrFail();
+            $credits = $user->credits()->where('currency_code', $this->currency)->lockForUpdate()->get();
 
-        try {
-            // Lock the user's invoices and credits
-            Auth::user()->invoices()->lockForUpdate()->get();
-            $credits = Auth::user()->credits()->where('currency_code', $this->currency)->lockForUpdate()->get();
-
-            // Check if user has credits in this currency
-            if ($credits->isNotEmpty()) {
-                // Check if the current credits + the new credits exceed the maximum credits allowed
-                if ($credits->sum('amount') + $this->amount > config('settings.credits_maximum_credit')) {
-                    $this->notify(__('You cannot exceed the maximum credits allowed.'), 'error');
-
-                    return;
-                }
+            // Check if the current credits + the new credits exceed the maximum credits allowed
+            $creditAmount = $credits->sum(fn (Credit $credit) => (int) round((float) $credit->amount * 100));
+            $depositAmount = (int) round((float) $this->amount * 100);
+            $maximumCredit = (int) round((float) config('settings.credits_maximum_credit') * 100);
+            if ($creditAmount + $depositAmount > $maximumCredit) {
+                throw new DisplayException(__('You cannot exceed the maximum credits allowed.'));
             }
 
             // Check if the user has any unpaid invoice items referencing credits
-            $unpaidInvoiceItems = Auth::user()->invoices()->where('status', Invoice::STATUS_PENDING)->whereHas('items', function ($query) {
+            $unpaidInvoiceItems = $user->invoices()->where('status', Invoice::STATUS_PENDING)->whereHas('items', function ($query) {
                 $query->where('reference_type', Credit::class);
             })->exists();
 
@@ -85,7 +81,7 @@ class Credits extends Component
             }
 
             $invoice = Invoice::create([
-                'user_id' => Auth::id(),
+                'user_id' => $user->id,
                 'currency_code' => $this->currency,
                 'due_at' => now(),
                 'status' => Invoice::STATUS_PENDING,
@@ -98,30 +94,25 @@ class Credits extends Component
                 'reference_type' => Credit::class,
             ]);
 
-            DB::commit();
+            return $invoice;
+        });
 
-            Session::put(['gateway' => $this->gateway]);
+        Session::put(['gateway' => $this->gateway]);
 
-            // Redirect to the invoices page and pay the invoice
-            if ($this->gateway) {
-                $pay = ExtensionHelper::pay(Gateway::where('id', $this->gateway)->first(), $invoice->fresh());
-                if (is_string($pay)) {
-                    return $this->redirect($pay);
-                }
+        // Redirect to the invoices page and pay the invoice
+        if ($this->gateway) {
+            $pay = ExtensionHelper::pay(Gateway::where('id', $this->gateway)->first(), $invoice->fresh());
+            if (is_string($pay)) {
+                return $this->redirect($pay);
             }
-
-            return $this->redirect(route('invoices.show', $invoice) . '?gateway=' . $this->gateway . '&pay', true);
-        } catch (Exception $e) {
-            // Rollback the transaction
-            DB::rollBack();
-            // Return error message
-            throw $e;
         }
+
+        return $this->redirect(route('invoices.show', $invoice) . '?gateway=' . $this->gateway . '&pay', true);
     }
 
     public function render()
     {
-        return view('client.account.credits')->layoutData([
+        return view('client.account.credits')->with('transactions', Auth::user()->creditTransactions()->with('currency')->latest()->orderByDesc('id')->paginate(config('settings.pagination')))->layoutData([
             'title' => __('Add Credits'),
         ]);
     }

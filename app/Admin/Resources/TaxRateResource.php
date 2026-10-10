@@ -19,6 +19,8 @@ use Filament\Tables\Table;
 
 class TaxRateResource extends Resource
 {
+    protected static ?int $navigationSort = 150;
+
     protected static ?string $model = TaxRate::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-wallet-3-line';
@@ -30,7 +32,7 @@ class TaxRateResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Configuration');
+        return __('System management');
     }
 
     public static function form(Schema $schema): Schema

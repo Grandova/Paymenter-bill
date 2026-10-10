@@ -41,5 +41,38 @@
                 {{ __('account.add_credit') }}
             </x-button.primary>
         </form>
+
+        <div class="mt-8">
+            <h4 class="text-xl font-bold pb-3">{{ __('account.credit_history') }}</h4>
+            @if ($transactions->isEmpty())
+                <p>{{ __('account.no_credit_history') }}</p>
+            @else
+                <div class="overflow-x-auto rounded-lg border border-neutral">
+                    <table class="w-full text-left">
+                        <thead class="bg-background-secondary">
+                            <tr>
+                                <th class="p-3">{{ __('Date') }}</th>
+                                <th class="p-3">{{ __('Type') }}</th>
+                                <th class="p-3">{{ __('account.change_amount') }}</th>
+                                <th class="p-3">{{ __('account.balance_after') }}</th>
+                                <th class="p-3">{{ __('Description') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($transactions as $transaction)
+                                <tr class="border-t border-neutral">
+                                    <td class="p-3 whitespace-nowrap">{{ $transaction->created_at->format('Y-m-d H:i') }}</td>
+                                    <td class="p-3 whitespace-nowrap">{{ __('account.credit_transaction_types.' . $transaction->type) }}</td>
+                                    <td class="p-3 whitespace-nowrap">{{ $transaction->formattedAmount }}</td>
+                                    <td class="p-3 whitespace-nowrap">{{ $transaction->formattedBalanceAfter }}</td>
+                                    <td class="p-3">{{ $transaction->description ?: '—' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4">{{ $transactions->links() }}</div>
+            @endif
+        </div>
     </div>
 </div>

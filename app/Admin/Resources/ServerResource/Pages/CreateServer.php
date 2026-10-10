@@ -24,21 +24,21 @@ class CreateServer extends CreateRecord
         $data['enabled'] = true;
         $record = static::getModel()::create(Arr::except($data, ['settings']));
 
-        if (!isset($data['settings'])) {
-            return $record;
-        }
-
-        $config = collect(ExtensionHelper::getConfig('server', $data['extension'], $data['settings']));
-        foreach ($data['settings'] as $key => $value) {
-            if (is_null($value)) {
-                continue;
+        if (isset($data['settings'])) {
+            $config = collect(ExtensionHelper::getConfig('server', $data['extension'], $data['settings']))->keyBy('name');
+            foreach ($data['settings'] as $key => $value) {
+                if (is_null($value)) {
+                    continue;
+                }
+                $option = $config->get($key, []);
+                $record->settings()->updateOrCreate([
+                    'key' => $key,
+                ], [
+                    'type' => $option['database_type'] ?? 'string',
+                    'value' => is_array($value) ? json_encode($value) : $value,
+                    'encrypted' => $option['encrypted'] ?? false,
+                ]);
             }
-            $record->settings()->updateOrCreate([
-                'key' => $key,
-            ], [
-                'value' => $value,
-                'encrypted' => $config->firstWhere('name', $key)['encrypted'] ?? false,
-            ]);
         }
 
         ExtensionHelper::call($record, 'enabled', [$record], mayFail: true);

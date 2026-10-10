@@ -24,7 +24,16 @@ class ProcessPaidInvoiceService
                 if (!$service || !($service instanceof Service)) {
                     return;
                 }
-                (new RenewServiceService)->handle($service);
+                $cycleChange = ServiceUpgrade::where('invoice_id', $invoice->id)
+                    ->where('service_id', $service->id)
+                    ->where('type', 'renewal_cycle')
+                    ->where('status', ServiceUpgrade::STATUS_PENDING)
+                    ->first();
+                if ($cycleChange) {
+                    (new ServiceUpgradeService)->handle($cycleChange);
+                } else {
+                    (new RenewServiceService)->handle($service);
+                }
             } elseif ($item->reference_type == ServiceUpgrade::class) {
                 $serviceUpgrade = $item->reference;
                 if (!$serviceUpgrade || $serviceUpgrade->status !== ServiceUpgrade::STATUS_PENDING || !($serviceUpgrade instanceof ServiceUpgrade)) {
@@ -39,12 +48,13 @@ class ProcessPaidInvoiceService
                     $credit = $user->credits()->where('currency_code', $invoice->currency_code)->lockForUpdate()->first();
 
                     if ($credit) {
-                        $credit->increment('amount', $item->price);
+                        $credit->amount = number_format(((int) round((float) $credit->amount * 100) + (int) round((float) $item->price * 100)) / 100, 2, '.', '');
+                        $credit->recordAs('deposit', __('account.credit_deposit', ['currency' => $invoice->currency_code]), $invoice)->save();
                     } else {
-                        $user->credits()->create([
+                        $user->credits()->make([
                             'currency_code' => $invoice->currency_code,
                             'amount' => $item->price,
-                        ]);
+                        ])->recordAs('deposit', __('account.credit_deposit', ['currency' => $invoice->currency_code]), $invoice)->save();
                     }
                 });
             }

@@ -156,8 +156,10 @@ class Epay extends Gateway
                     ? response('success') : response('fail', 400);
             }
 
-            if ($invoice->status !== 'pending' || bccomp($params['money'], '0', 2) <= 0
-                || bccomp($params['money'], (string) $invoice->remaining, 2) !== 0) {
+            $terminalInvoice = in_array($invoice->status, [Invoice::STATUS_CANCELLED, Invoice::STATUS_PAID], true);
+            if (bccomp($params['money'], '0', 2) <= 0
+                || (!$terminalInvoice && ($invoice->status !== Invoice::STATUS_PENDING
+                    || bccomp($params['money'], (string) $invoice->remaining, 2) !== 0))) {
                 return response('fail', 400);
             }
 

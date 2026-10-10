@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Traits\HasPlans;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -20,7 +21,11 @@ class Product extends Model implements Auditable
         'name',
         'description',
         'category_id',
-        'enabled',
+        'hidden',
+    ];
+
+    protected $casts = [
+        'hidden' => 'boolean',
     ];
 
     /**
@@ -37,6 +42,13 @@ class Product extends Model implements Auditable
     public function configOptions(): HasManyThrough
     {
         return $this->hasManyThrough(ConfigOption::class, ConfigOptionProduct::class, 'product_id', 'id', 'id', 'config_option_id')->where('config_options.hidden', false)->orderBy('config_options.sort', 'asc')->orderBy('config_options.id', 'desc');
+    }
+
+    public function configurableOptions(): BelongsToMany
+    {
+        return $this->belongsToMany(ConfigOption::class, 'config_option_products')
+            ->whereNull('config_options.parent_id')
+            ->orderBy('config_options.sort');
     }
 
     /**

@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 
 class ErrorLogResource extends Resource
 {
+    protected static ?int $navigationSort = 110;
+
     protected static ?string $model = DebugLog::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-bug-line';
@@ -28,7 +30,7 @@ class ErrorLogResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Debug');
+        return __('System management');
     }
 
     public static function getEloquentQuery(): Builder

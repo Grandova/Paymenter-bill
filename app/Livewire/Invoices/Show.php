@@ -37,6 +37,8 @@ class Show extends Component
 
     public function mount()
     {
+        $this->authorize('view', $this->invoice);
+
         if (Request::has('checkPayment') && $this->invoice->status === 'pending') {
             $this->checkPayment = true;
         }
@@ -55,19 +57,19 @@ class Show extends Component
     #[Computed]
     public function gateways()
     {
-        return ExtensionHelper::getCheckoutGateways($this->invoice->total, $this->invoice->currency_code, 'invoice', $this->invoice->items);
+        return ExtensionHelper::getCheckoutGateways($this->invoice->remaining, $this->invoice->currency_code, 'invoice', $this->invoice->items);
     }
 
     #[Computed]
     public function paymentMethods()
     {
-        return ExtensionHelper::getBillingAgreementGateways($this->invoice->currency_code);
+        return ExtensionHelper::getBillingAgreementGateways($this->invoice->currency_code, $this->invoice->remaining, $this->invoice->items);
     }
 
     #[Computed]
     public function savedPaymentMethods()
     {
-        return Auth::user()->billingAgreements()->with('gateway')->get();
+        return Auth::user()->billingAgreements()->whereHas('gateway')->with('gateway')->get();
     }
 
     #[Computed]
@@ -92,8 +94,13 @@ class Show extends Component
 
     public function processPayment()
     {
+        abort_unless($this->invoice->user_id === Auth::id(), 404);
+
         if ($this->invoice->status !== 'pending') {
             return $this->notify(__('This invoice cannot be paid.'), 'error');
+        }
+        if ($this->invoice->transactions()->where('status', InvoiceTransactionStatus::Processing)->exists()) {
+            return $this->notify(__('A payment for this invoice is already being processed. Please wait before trying again.'), 'error');
         }
 
         if (is_null($this->selectedMethod)) {
@@ -101,6 +108,9 @@ class Show extends Component
         }
 
         if ($this->selectedMethod === 'credit') {
+            if (!config('settings.credits_enabled')) {
+                return $this->notify(__('This payment method cannot be used for this invoice.'), 'error');
+            }
             if ($this->invoice->items->contains(fn ($item) => $item->reference_type === Credit::class)) {
                 return $this->notify(__('This invoice cannot be paid with credits.'), 'error');
             }
@@ -116,7 +126,13 @@ class Show extends Component
 
         if ($this->setAsDefault) {
             $invoiceItems = $this->recurringServices()->get();
-            $agreement = Auth::user()->billingAgreements()->where('ulid', $this->selectedMethod)->first();
+            $agreement = Auth::user()->billingAgreements()->where('ulid', $this->selectedMethod)->with('gateway')->first();
+            if (!$agreement) {
+                return $this->notify(__('Invalid payment method.'), 'error');
+            }
+            if (!$agreement->gateway || !in_array($agreement->gateway->id, array_column($this->paymentMethods, 'id'))) {
+                return $this->notify(__('This payment method cannot be used for this invoice.'), 'error');
+            }
 
             foreach ($invoiceItems as $invoiceItem) {
                 $service = $invoiceItem->reference;
@@ -147,23 +163,28 @@ class Show extends Component
     private function payWithCredit()
     {
         DB::transaction(function () {
-            $credit = Auth::user()->credits()->where('currency_code', $this->invoice->currency_code)->lockForUpdate()->first();
-            if ($credit && $credit->amount > 0) {
-                // Is it more credits or less credits than the total price?
-                if ($credit->amount >= $this->invoice->remaining) {
-                    $credit->amount -= $this->invoice->remaining;
-                    $credit->save();
-                    ExtensionHelper::addPayment($this->invoice->id, null, amount: $this->invoice->remaining, isCreditTransaction: true);
+            $invoice = Invoice::whereKey($this->invoice->id)->lockForUpdate()->firstOrFail();
+            if ($invoice->user_id !== Auth::id()) {
+                abort(404);
+            }
+            if ($invoice->status !== Invoice::STATUS_PENDING || $invoice->transactions()->where('status', InvoiceTransactionStatus::Processing)->exists()) {
+                $this->notify(__('This invoice cannot be paid.'), 'error');
 
+                return;
+            }
+
+            $remaining = $invoice->remaining;
+            $user = Auth::user()->newQuery()->whereKey(Auth::id())->lockForUpdate()->firstOrFail();
+            $spent = Credit::spend($user, $invoice->currency_code, $remaining, type: 'invoice_payment', reference: $invoice);
+            if ($spent > 0) {
+                ExtensionHelper::addPayment($invoice, null, amount: $spent, isCreditTransaction: true);
+
+                if ($spent >= $remaining) {
                     return $this->redirect(route('invoices.show', $this->invoice), true);
-                } else {
-                    ExtensionHelper::addPayment($this->invoice->id, null, amount: $credit->amount, isCreditTransaction: true);
-                    $credit->amount = 0;
-                    $credit->save();
-
-                    $this->invoice = $this->invoice->fresh();
-                    $this->notify(__('Part of the invoice has been paid with credits. Please pay the remaining amount'));
                 }
+
+                $this->invoice = $this->invoice->fresh();
+                $this->notify(__('Part of the invoice has been paid with credits. Please pay the remaining amount'));
             }
         });
     }
@@ -171,7 +192,7 @@ class Show extends Component
     private function payWithSavedMethod($agreementUlid)
     {
         $agreement = Auth::user()->billingAgreements()->where('ulid', $agreementUlid)->with('gateway')->first();
-        if (!$agreement) {
+        if (!$agreement || !$agreement->gateway) {
             return $this->notify(__('Invalid payment method.'), 'error');
         }
 
@@ -209,20 +230,21 @@ class Show extends Component
                 InvoiceTransactionStatus::Processing->value,
                 InvoiceTransactionStatus::Succeeded->value,
             ])->exists()) {
-                $this->notify('这张账单当前无法取消。', 'error');
+                $this->notify(__('The invoice cannot be cancelled right now.'), 'error');
 
                 return;
             }
 
             $invoice->update([
                 'status' => Invoice::STATUS_CANCELLED,
-                'cancellation_reason' => '客户取消未付款账单',
+                'cancellation_reason' => __('Unpaid invoice cancelled by customer'),
             ]);
+            $invoice->cancelPendingServices();
             $this->checkPayment = false;
             $this->lastChecked = null;
             $this->showPayModal = false;
             $this->invoice = $invoice->fresh()->load('transactions', 'transactions.gateway', 'transactions.invoice', 'adjustmentNotes');
-            $this->notify('未付款账单已取消。', 'success');
+            $this->notify(__('Unpaid invoice has been cancelled.'), 'success');
         });
     }
 

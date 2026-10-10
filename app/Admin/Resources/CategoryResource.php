@@ -32,7 +32,7 @@ class CategoryResource extends Resource
 
     protected static string|\BackedEnum|null $activeNavigationIcon = 'ri-folder-6-fill';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 20;
 
     public static function getModelLabel(): string
     {
@@ -41,7 +41,12 @@ class CategoryResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Products and services');
+        return __('Business management');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Product groups');
     }
 
     public static function form(Schema $schema): Schema

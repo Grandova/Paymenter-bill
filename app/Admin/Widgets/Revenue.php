@@ -4,6 +4,7 @@ namespace App\Admin\Widgets;
 
 use App\Enums\DashboardPeriod;
 use App\Enums\InvoiceTransactionStatus;
+use App\Models\Invoice;
 use App\Models\InvoiceTransaction;
 use App\Models\Order;
 use Carbon\Carbon;
@@ -47,22 +48,23 @@ class Revenue extends ChartWidget
         $end = now();
 
         $interval = $period->interval();
+        $currency = config('settings.default_currency');
 
-        $revenue = Trend::query(InvoiceTransaction::query()->where('status', InvoiceTransactionStatus::Succeeded)->where('is_credit_transaction', false))
+        $revenue = Trend::query(InvoiceTransaction::query()->where('status', InvoiceTransactionStatus::Succeeded)->where('is_credit_transaction', false)->where('credited_to_balance', false)->whereHas('invoice', fn ($query) => $query->where('status', '!=', Invoice::STATUS_CANCELLED)->where('currency_code', $currency)))
             ->between(
                 start: $start,
                 end: $end,
             )
             ->interval($interval)
-            ->sum('amount');
+            ->sum('amount - refunded_amount - credited_amount');
 
-        $netRevenue = Trend::query(InvoiceTransaction::query()->where('status', InvoiceTransactionStatus::Succeeded)->where('is_credit_transaction', false))
+        $netRevenue = Trend::query(InvoiceTransaction::query()->where('status', InvoiceTransactionStatus::Succeeded)->where('is_credit_transaction', false)->where('credited_to_balance', false)->whereHas('invoice', fn ($query) => $query->where('status', '!=', Invoice::STATUS_CANCELLED)->where('currency_code', $currency)))
             ->between(
                 start: $start,
                 end: $end,
             )
             ->interval($interval)
-            ->sum('amount - COALESCE(fee, 0)');
+            ->sum('amount - refunded_amount - credited_amount - COALESCE(fee, 0)');
 
         $newOrders = Trend::model(Order::class)
             ->between(
@@ -75,13 +77,13 @@ class Revenue extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => __('Revenue'),
+                    'label' => __('Revenue') . ' (' . $currency . ')',
                     'data' => $revenue->map(fn (TrendValue $value) => $value->aggregate)->toArray(),
                     'backgroundColor' => '#3490dc',
                     'borderColor' => '#3490dc',
                 ],
                 [
-                    'label' => __('Net Revenue'),
+                    'label' => __('Net Revenue') . ' (' . $currency . ')',
                     'data' => $netRevenue->map(fn (TrendValue $value) => $value->aggregate)->toArray(),
                     'backgroundColor' => '#38c172',
                     'borderColor' => '#38c172',

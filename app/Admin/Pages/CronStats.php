@@ -19,13 +19,13 @@ class CronStats extends Dashboard
 
     protected static string|\BackedEnum|null $activeNavigationIcon = 'ri-time-fill';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 70;
 
     protected static string $routePath = 'cron-stats';
 
     public static function getNavigationGroup(): ?string
     {
-        return __('System');
+        return __('System management');
     }
 
     public static function getNavigationLabel(): string

@@ -19,9 +19,12 @@ class CreateServiceRequest extends AdminApiRequest
                 'exists:plans,id',
                 function ($attribute, $value, $fail) {
                     $productId = $this->input('product_id');
-                    if ($productId && !Plan::where('id', $value)->where('priceable_type', Product::class)->where('priceable_id', $productId)->exists()) {
+                    $plan = Plan::where('id', $value)->where('priceable_type', Product::class)->where('priceable_id', $productId)->first();
+                    if (!$plan) {
                         // Check if the plan belongs to the specified product
                         $fail(__('The selected plan does not belong to the specified product.'));
+                    } elseif ($plan->type !== 'free' && !$plan->prices()->where('currency_code', $this->input('currency_code'))->exists()) {
+                        $fail(__('The selected plan is not available in the specified currency.'));
                     }
                 },
             ],

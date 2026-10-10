@@ -12,6 +12,8 @@ use App\Http\Resources\InvoiceResource;
 use App\Models\Invoice;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\QueryParameter;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Spatie\QueryBuilder\QueryBuilder;
 
 #[Group(name: 'Invoices', weight: 4)]
@@ -70,11 +72,31 @@ class InvoiceController extends ApiController
      */
     public function update(UpdateInvoiceRequest $request, Invoice $invoice)
     {
-        // Validate and update the invoice
-        $invoice->update($request->validated());
+        $data = $request->validated();
 
-        // Return the updated invoice as a JSON response
-        return new InvoiceResource($this->loadAllowedIncludes($invoice, self::INCLUDES));
+        return DB::transaction(function () use ($invoice, $data) {
+            $lockedInvoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+            if (($data['status'] ?? null) === Invoice::STATUS_CANCELLED) {
+                if (!$lockedInvoice->canBeEdited()
+                    || in_array($lockedInvoice->status, [Invoice::STATUS_CANCELLED, Invoice::STATUS_PAID], true)
+                    || (config('settings.immutable_invoices_enabled', false) && $lockedInvoice->status !== Invoice::STATUS_DRAFT)) {
+                    throw ValidationException::withMessages([
+                        'status' => __('invoices.invoice_cancel_blocked'),
+                    ]);
+                }
+            } elseif (!$lockedInvoice->canBeEdited() || (config('settings.immutable_invoices_enabled', false) && $lockedInvoice->status !== Invoice::STATUS_DRAFT)) {
+                throw ValidationException::withMessages([
+                    'invoice' => __('invoices.invoice_edit_blocked'),
+                ]);
+            }
+
+            $lockedInvoice->update($data);
+            if ($lockedInvoice->wasChanged('status') && $lockedInvoice->status === Invoice::STATUS_CANCELLED) {
+                $lockedInvoice->cancelPendingServices();
+            }
+
+            return new InvoiceResource($this->loadAllowedIncludes($lockedInvoice, self::INCLUDES));
+        });
     }
 
     /**
@@ -82,8 +104,16 @@ class InvoiceController extends ApiController
      */
     public function destroy(DeleteInvoiceRequest $request, Invoice $invoice)
     {
-        // Delete the invoice
-        $invoice->delete();
+        DB::transaction(function () use ($invoice): void {
+            $invoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+            if (!$invoice->canBeEdited() || (config('settings.immutable_invoices_enabled', false) && $invoice->status !== Invoice::STATUS_DRAFT)) {
+                throw ValidationException::withMessages([
+                    'invoice' => __('invoices.invoice_delete_blocked'),
+                ]);
+            }
+
+            $invoice->delete();
+        });
 
         return $this->returnNoContent();
     }

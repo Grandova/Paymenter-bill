@@ -20,7 +20,7 @@ class Cart
             return new \App\Models\Cart;
         }
 
-        return $cart->load('items.plan', 'items.product', 'items.product.configOptions.children.plans.prices');
+        return $cart->load('items.plan.prices.currency', 'items.product', 'items.product.configOptions.children.plans.prices.currency');
     }
 
     public static function get()
@@ -78,7 +78,7 @@ class Cart
             'checkout_config' => $checkoutConfig,
             'quantity' => $quantity,
         ]);
-        $cart->load('items.plan', 'items.product', 'items.product.configOptions.children.plans.prices');
+        $cart->load('items.plan.prices.currency', 'items.product', 'items.product.configOptions.children.plans.prices.currency');
 
         if ($cart->coupon_id) {
             // Reapply coupon to the cart
@@ -138,7 +138,7 @@ class Cart
         if ($item) {
             $item->delete(); // We also want to trigger Eloquent events
         }
-        $cart->load('items.plan', 'items.product', 'items.product.configOptions.children.plans.prices');
+        $cart->load('items.plan.prices.currency', 'items.product', 'items.product.configOptions.children.plans.prices.currency');
     }
 
     public static function updateQuantity($index, $quantity)
@@ -150,6 +150,10 @@ class Cart
             }
         } else {
             return;
+        }
+
+        if (filter_var($quantity, FILTER_VALIDATE_INT) === false) {
+            throw new DisplayException(__('Quantity must be a whole number.'));
         }
 
         if ($quantity < 1) {
@@ -186,7 +190,7 @@ class Cart
             if ($coupon->starts_at && $coupon->starts_at->isFuture()) {
                 throw new DisplayException(__('Coupon code is not active yet'));
             }
-            if ($coupon->max_uses && $coupon->services()->count() >= $coupon->max_uses) {
+            if ($coupon->max_uses && $coupon->usageCount() >= $coupon->max_uses) {
                 throw new DisplayException(__('Coupon code has reached its maximum uses'));
             }
             if (Auth::check() && $coupon->hasExceededMaxUsesPerUser(Auth::id())) {
@@ -256,7 +260,8 @@ class Cart
 
         try {
             $coupon = self::get()->coupon;
-            self::validateCoupon($coupon->code);
+            $coupon = self::validateCoupon($coupon->code);
+            self::get()->setRelation('coupon', $coupon);
 
             return true;
         } catch (DisplayException $e) {

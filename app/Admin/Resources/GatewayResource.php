@@ -24,6 +24,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class GatewayResource extends Resource
 {
+    protected static ?int $navigationSort = 10;
+
     protected static ?string $model = Gateway::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'ri-secure-payment-line';
@@ -37,7 +39,12 @@ class GatewayResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Finance');
+        return __('System management');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Payment gateways');
     }
 
     public static function getGloballySearchableAttributes(): array

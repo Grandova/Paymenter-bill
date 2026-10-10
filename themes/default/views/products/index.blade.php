@@ -18,7 +18,7 @@
             @foreach ($childCategories as $childCategory)
             <a href="{{ route('category.show', ['category' => $childCategory->slug]) }}" wire:navigate class="catalog-product">
                 @if ($childCategory->image)
-                <img src="{{ Storage::url($childCategory->image) }}" alt="" class="size-14 rounded-lg object-cover mb-4" />
+                <img src="{{ Storage::url($childCategory->image) }}" alt="" loading="lazy" decoding="async" class="size-14 rounded-lg object-cover mb-4" />
                 @endif
                 <h2 class="text-lg font-semibold">{{ $childCategory->name }}</h2>
                 @if (theme('show_category_description', true))
@@ -31,10 +31,11 @@
         @endif
         <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
             @foreach ($products as $product)
+            @php $startingPlan = $product->availablePlans($currency)->sortBy(fn ($plan) => $plan->price($currency)->price)->first(); @endphp
             <div class="catalog-product flex flex-col">
                 <div class="flex items-center justify-between gap-3 mb-5">
                     @if ($product->image)
-                    <img src="{{ Storage::url($product->image) }}" alt="" class="size-14 rounded-lg object-cover" />
+                    <img src="{{ Storage::url($product->image) }}" alt="" loading="lazy" decoding="async" class="size-14 rounded-lg object-cover" />
                     @else
                     <span class="location-icon"><x-ri-server-line class="size-6" /></span>
                     @endif
@@ -47,10 +48,21 @@
                 <article class="prose prose-sm dark:prose-invert text-muted mt-3">{!! $product->description !!}</article>
                 @endif
                 <div class="mt-5 mb-6">
-                    <strong class="text-2xl">{{ $product->price()->formatted->price }}</strong>
+                    <strong class="text-2xl">{{ $product->price(currency: $currency)->formatted->price }}</strong>
+                    @if ($startingPlan?->type === 'recurring')
+                    <span class="text-sm text-muted">{{ __('services.every_period', [
+                        'period' => $startingPlan->billing_period > 1 ? $startingPlan->billing_period : '',
+                        'unit' => trans_choice(__('services.billing_cycles.' . $startingPlan->billing_unit), $startingPlan->billing_period)
+                    ]) }}</span>
+                    @if (($startingPlan->price($currency)->setup_fee ?? 0) > 0)
+                    <span class="block text-sm text-muted">{{ __('product.first_payment_setup_fee', ['amount' => $startingPlan->price($currency)->formatted->setup_fee]) }}</span>
+                    @endif
+                    @elseif ($startingPlan?->type === 'one-time')
+                    <span class="text-sm text-muted">{{ __('One Time') }}</span>
+                    @endif
                 </div>
                 <div class="mt-auto flex items-center gap-3">
-                    @if ($product->stock !== 0 && $product->price()->available)
+                    @if ($product->stock !== 0 && $product->price(currency: $currency)->available)
                     <a href="{{ route('products.checkout', ['category' => $product->category, 'product' => $product->slug]) }}" wire:navigate class="flex-1">
                         <x-button.primary>{{ __('Configure') }}<x-ri-arrow-right-line class="size-4" /></x-button.primary>
                     </a>

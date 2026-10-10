@@ -10,13 +10,13 @@ class Extensions extends Cluster
 
     protected static string|\BackedEnum|null $activeNavigationIcon = 'ri-puzzle-fill';
 
-    protected static ?int $navigationSort = 0;
+    protected static ?int $navigationSort = 20;
 
     protected static ?string $slug = 'extensions';
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Extensions');
+        return __('System management');
     }
 
     public static function getClusterBreadcrumb(): ?string
@@ -26,6 +26,6 @@ class Extensions extends Cluster
 
     public static function getNavigationLabel(): string
     {
-        return __('Extensions');
+        return __('Plugin management');
     }
 }

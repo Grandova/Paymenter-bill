@@ -12,6 +12,7 @@ use App\Http\Resources\CreditResource;
 use App\Models\Credit;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\QueryParameter;
+use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
 
 #[Group(name: 'Credits', weight: 4)]
@@ -45,7 +46,7 @@ class CreditController extends ApiController
     public function store(CreateCreditRequest $request)
     {
         // Validate and create the credit
-        $credit = Credit::create($request->validated());
+        $credit = DB::transaction(fn () => Credit::create($request->validated()));
 
         // Return the created credit as a JSON response
         return new CreditResource($this->loadAllowedIncludes($credit, self::INCLUDES));
@@ -70,7 +71,7 @@ class CreditController extends ApiController
     public function update(UpdateCreditRequest $request, Credit $credit)
     {
         // Validate and update the credit
-        $credit->update($request->validated());
+        DB::transaction(fn () => $credit->update($request->validated()));
 
         // Return the updated credit as a JSON response
         return new CreditResource($this->loadAllowedIncludes($credit, self::INCLUDES));
@@ -82,7 +83,7 @@ class CreditController extends ApiController
     public function destroy(DeleteCreditRequest $request, Credit $credit)
     {
         // Delete the credit
-        $credit->delete();
+        DB::transaction(fn () => $credit->delete());
 
         return $this->returnNoContent();
     }

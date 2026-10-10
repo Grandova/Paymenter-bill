@@ -187,6 +187,11 @@ class User extends Authenticatable implements Auditable, FilamentUser, HasAvatar
         return $this->hasMany(Credit::class);
     }
 
+    public function creditTransactions()
+    {
+        return $this->hasMany(CreditTransaction::class)->latest('id');
+    }
+
     public function cart()
     {
         return $this->hasOne(Cart::class);
