@@ -1,6 +1,6 @@
 # 使用宝塔 / aaPanel 安装 Paymenter
 
-本教程用于全新安装。请先安装宝塔或 aaPanel，将域名解析到服务器 IP，并放行 80、443 端口。
+本教程包含全新安装和现有站点的热更新。首次安装前请先安装宝塔或 aaPanel，将域名解析到服务器 IP，并放行 80、443 端口。
 
 下面以 `bill.example.com` 为例，请替换成自己的域名。程序已包含前端文件，服务器无需安装 Node.js。
 
@@ -176,6 +176,37 @@ location ^~ /default/assets/ {
 
 此规则仅用于构建后的公开静态文件，不用于后台页面、账单、接口或用户上传文件。发布时一并上传 `public/default/manifest.json` 和对应资源，保留上一版资源直到旧页面完成切换。通过面板检查 Nginx 配置后重新加载。指令依据：[Nginx 缓存响应头](https://nginx.org/en/docs/http/ngx_http_headers_module.html)、[Nginx gzip](https://nginx.org/en/docs/http/ngx_http_gzip_module.html)。
 
+## 10.现有站点热更新
+
+适用于只改动 PHP、模板或已打包前端资源的版本。先在面板备份数据库，并备份站点的 `.env`、`storage` 和自装插件；确认新版 `composer.lock`、`database/migrations` 及插件迁移没有变化。若依赖或迁移发生变化，请安排维护窗口，安装依赖并执行 `/www/server/php/83/bin/php artisan migrate --force`，不要按下面的在线步骤跳过迁移。
+
+首次安装使用的是源码压缩包，站点通常没有 `.git` 目录，因此无需执行 `git pull`。在面板终端或 SSH 中运行以下命令；将路径换成实际站点目录，先确认已安装 `rsync`：
+
+```sh
+set -eu
+SITE=/www/wwwroot/bill.example.com
+test -f "$SITE/artisan" && test -f "$SITE/.env"
+command -v rsync >/dev/null
+UPDATE_DIR=$(mktemp -d)
+curl -fL https://github.com/Grandova/Paymenter-bill/archive/refs/heads/main.tar.gz -o "$UPDATE_DIR/paymenter.tar.gz"
+mkdir "$UPDATE_DIR/release"
+tar -xzf "$UPDATE_DIR/paymenter.tar.gz" --strip-components=1 -C "$UPDATE_DIR/release"
+cmp -s "$SITE/composer.lock" "$UPDATE_DIR/release/composer.lock" || { echo '依赖版本已变化，请安排维护更新'; exit 1; }
+diff -qr "$SITE/database/migrations" "$UPDATE_DIR/release/database/migrations" >/dev/null || { echo '数据库迁移已变化，请安排维护更新'; exit 1; }
+rsync -a --delay-updates \
+    --exclude='.env' --exclude='storage/' --exclude='vendor/' \
+    --exclude='bootstrap/cache/' --exclude='public/storage/' --exclude='composer.phar' \
+    "$UPDATE_DIR/release/" "$SITE/"
+cd "$SITE"
+/www/server/php/83/bin/php artisan optimize:clear
+/www/server/php/83/bin/php artisan view:cache
+/www/server/php/83/bin/php artisan queue:restart
+```
+
+随后在面板中重载网站所用的 PHP 8.3 服务，再刷新前台和后台。若刚修复后台空白页，可检查 `https://你的域名/paymenter/livewire-script`：应返回 **200**，并在窄屏确认左上角菜单能够展开。验证完成后可删除 `$UPDATE_DIR` 临时目录。
+
+此方式会逐个替换文件，不能保证严格零停机；涉及数据库结构、依赖或不兼容改动时，应进入维护模式更新。不要覆盖 `.env`、`storage`，也不要删除旧版 `public/default/assets`，以免正在打开的页面丢失资源。
+
 ### 常见问题
 
 **安装提示 `composer-runtime-api` 版本不兼容**
@@ -204,4 +235,4 @@ location ^~ /default/assets/ {
 
 **如何更新中文版**
 
-本教程仅用于全新安装。不要执行原版 `update.sh` 或使用后台的官方升级功能，它们会下载官方文件并覆盖中文版修改。
+参见第 10 节。不要执行原版 `update.sh` 或使用后台的官方升级功能，它们会下载官方文件并覆盖中文版修改。
